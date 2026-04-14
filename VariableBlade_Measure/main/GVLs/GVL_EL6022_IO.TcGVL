@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_EL6022_IO" Id="{a03e6b1f-7e9e-4f5e-a1ea-7c8c0138a3e3}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      EL6022 process data mapping placeholders.
+      Map these in TwinCAT I/O Mapping to:
+        Term 6 (EL6022) -> COM Inputs/Outputs Channel 1/2
+      Notes:
+        - Status/Ctrl are WORD. Typically: low byte = flags, high byte = length (bytes).
+        - Data arrays are 22 bytes (0..21).
+    *)
+
+    // Channel 1
+    EL6022_Ch1_Status AT %I* : WORD;
+    EL6022_Ch1_DataIn AT %I* : ARRAY [0..21] OF USINT;
+
+    EL6022_Ch1_Ctrl AT %Q* : WORD;
+    EL6022_Ch1_DataOut AT %Q* : ARRAY [0..21] OF USINT;
+
+    // Channel 2
+    EL6022_Ch2_Status AT %I* : WORD;
+    EL6022_Ch2_DataIn AT %I* : ARRAY [0..21] OF USINT;
+
+    EL6022_Ch2_Ctrl AT %Q* : WORD;
+    EL6022_Ch2_DataOut AT %Q* : ARRAY [0..21] OF USINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>
+

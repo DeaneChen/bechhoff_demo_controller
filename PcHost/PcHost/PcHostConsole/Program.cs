@@ -309,6 +309,163 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "el6022-loopback", StringComparison.OrdinalIgnoreCase))
+                {
+                    int txCh = 1;
+                    int timeoutMs = 2000;
+                    string hex = null;
+                    int len = -1;
+
+                    int i = index + 1;
+                    while (i < args.Length)
+                    {
+                        string k = args[i];
+                        if (string.Equals(k, "--tx-ch", StringComparison.OrdinalIgnoreCase))
+                        {
+                            txCh = int.Parse(RequireArg(args, ref i, "--tx-ch"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--hex", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hex = RequireArg(args, ref i, "--hex");
+                        }
+                        else if (string.Equals(k, "--len", StringComparison.OrdinalIgnoreCase))
+                        {
+                            len = int.Parse(RequireArg(args, ref i, "--len"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--timeout-ms", StringComparison.OrdinalIgnoreCase))
+                        {
+                            timeoutMs = int.Parse(RequireArg(args, ref i, "--timeout-ms"), CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Unknown el6022-loopback option: " + k);
+                            return 2;
+                        }
+
+                        i++;
+                    }
+
+                    if (txCh != 1 && txCh != 2)
+                    {
+                        Console.Error.WriteLine("--tx-ch must be 1 or 2");
+                        return 2;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(hex))
+                    {
+                        Console.Error.WriteLine("Usage: el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");
+                        return 2;
+                    }
+
+                    byte[] payload = ParseHexBytes(hex);
+                    if (payload.Length > 22)
+                    {
+                        Console.Error.WriteLine("Payload too long: " + payload.Length + " (max 22 bytes)");
+                        return 2;
+                    }
+
+                    int txLen = len >= 0 ? len : payload.Length;
+                    if (txLen < 0 || txLen > 22)
+                    {
+                        Console.Error.WriteLine("--len must be 0..22");
+                        return 2;
+                    }
+
+                    var txData = new byte[22];
+                    Buffer.BlockCopy(payload, 0, txData, 0, payload.Length);
+
+                    Console.WriteLine("Connecting to " + amsNetId + ":" + port);
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        // Prepare TX
+                        plc.WriteSymbol("GVL_Rs485Demo.TxUseCh2", txCh == 2);
+                        plc.WriteSymbol("GVL_Rs485Demo.TxLen", (byte)txLen);
+                        plc.WriteBytes("GVL_Rs485Demo.TxData", txData);
+
+                        uint prevRxSeq = plc.ReadSymbol<uint>("GVL_Rs485Demo.RxSeq");
+                        uint txSeq = plc.ReadSymbol<uint>("GVL_Rs485Demo.TxSeq") + 1;
+                        plc.WriteSymbol("GVL_Rs485Demo.TxSeq", txSeq);
+
+                        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+
+                        // Wait for TX done
+                        while (DateTime.UtcNow < deadline)
+                        {
+                            uint done = plc.ReadSymbol<uint>("GVL_Rs485Demo.TxDoneSeq");
+                            if (done == txSeq)
+                            {
+                                break;
+                            }
+
+                            Thread.Sleep(5);
+                        }
+
+                        uint doneSeq = plc.ReadSymbol<uint>("GVL_Rs485Demo.TxDoneSeq");
+                        if (doneSeq != txSeq)
+                        {
+                            Console.Error.WriteLine("TX timeout. TxDoneSeq=" + doneSeq.ToString(CultureInfo.InvariantCulture));
+                            return 1;
+                        }
+
+                        // Wait for RX seq change
+                        while (DateTime.UtcNow < deadline)
+                        {
+                            uint rxSeq = plc.ReadSymbol<uint>("GVL_Rs485Demo.RxSeq");
+                            if (rxSeq != prevRxSeq)
+                            {
+                                bool fromCh2 = plc.ReadSymbol<bool>("GVL_Rs485Demo.RxFromCh2");
+                                ushort status = plc.ReadSymbol<ushort>("GVL_Rs485Demo.RxStatus");
+                                byte rxLen = plc.ReadSymbol<byte>("GVL_Rs485Demo.RxLen");
+                                byte[] rxData = plc.ReadBytes("GVL_Rs485Demo.RxData", 22);
+
+                                Console.WriteLine("RX from: " + (fromCh2 ? "Ch2" : "Ch1"));
+                                Console.WriteLine("RX status: 0x" + status.ToString("X4", CultureInfo.InvariantCulture));
+                                Console.WriteLine("RX len: " + rxLen.ToString(CultureInfo.InvariantCulture));
+                                Console.WriteLine("RX data: " + ToHex(rxData, rxLen));
+                                return 0;
+                            }
+
+                            Thread.Sleep(5);
+                        }
+
+                        Console.Error.WriteLine("RX timeout. No new RxSeq.");
+                        return 1;
+                    }
+                }
+
+                if (string.Equals(command, "el6022-dump", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        ushort ch1Status = plc.ReadSymbol<ushort>("GVL_Rs485Demo.Debug_Ch1_Status");
+                        ushort ch2Status = plc.ReadSymbol<ushort>("GVL_Rs485Demo.Debug_Ch2_Status");
+                        ushort ch1Ctrl = plc.ReadSymbol<ushort>("GVL_Rs485Demo.Debug_Ch1_Ctrl");
+                        ushort ch2Ctrl = plc.ReadSymbol<ushort>("GVL_Rs485Demo.Debug_Ch2_Ctrl");
+
+                        uint rxSeq = plc.ReadSymbol<uint>("GVL_Rs485Demo.RxSeq");
+                        bool rxFromCh2 = plc.ReadSymbol<bool>("GVL_Rs485Demo.RxFromCh2");
+                        byte rxLen = plc.ReadSymbol<byte>("GVL_Rs485Demo.RxLen");
+                        ushort rxStatus = plc.ReadSymbol<ushort>("GVL_Rs485Demo.RxStatus");
+                        byte[] rxData = plc.ReadBytes("GVL_Rs485Demo.RxData", 22);
+
+                        Console.WriteLine("Ch1 Status: 0x" + ch1Status.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("Ch1 Ctrl:   0x" + ch1Ctrl.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("Ch2 Status: 0x" + ch2Status.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("Ch2 Ctrl:   0x" + ch2Ctrl.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxSeq:      " + rxSeq.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxFrom:     " + (rxFromCh2 ? "Ch2" : "Ch1"));
+                        Console.WriteLine("RxStatus:   0x" + rxStatus.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxLen:      " + rxLen.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxData:     " + ToHex(rxData, rxLen));
+
+                        return 0;
+                    }
+                }
+
                 Console.Error.WriteLine("Unknown command: " + command);
                 PrintHelp();
                 return 2;
@@ -357,9 +514,58 @@ namespace PcHostConsole
             Console.WriteLine("  write-u32 <SYMBOL> <VALUE>");
             Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
+            Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");
+            Console.WriteLine("  el6022-dump");
             Console.WriteLine();
             Console.WriteLine("Notes:");
             Console.WriteLine("  For 500~2000Hz logging, prefer PLC ring-buffer + PC batch/poll read (ring-dump) over per-sample reads.");
+        }
+
+        private static byte[] ParseHexBytes(string text)
+        {
+            if (text == null) throw new ArgumentNullException(nameof(text));
+
+            string cleaned = text.Replace(",", " ").Trim();
+            cleaned = cleaned.Replace("0x", "").Replace("0X", "");
+
+            var parts = cleaned.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 1 && parts[0].Length > 2)
+            {
+                // Allow "010203" style
+                string s = parts[0];
+                if (s.Length % 2 != 0) throw new FormatException("Hex string length must be even.");
+                var bytes = new byte[s.Length / 2];
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    bytes[i] = byte.Parse(s.Substring(i * 2, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                }
+
+                return bytes;
+            }
+
+            var output = new byte[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+            {
+                output[i] = byte.Parse(parts[i], NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+            }
+
+            return output;
+        }
+
+        private static string ToHex(byte[] data, int len)
+        {
+            if (data == null) return string.Empty;
+            if (len < 0) len = 0;
+            if (len > data.Length) len = data.Length;
+
+            var sb = new System.Text.StringBuilder(len * 3);
+            for (int i = 0; i < len; i++)
+            {
+                if (i > 0) sb.Append(' ');
+                sb.Append(data[i].ToString("X2", CultureInfo.InvariantCulture));
+            }
+
+            return sb.ToString();
         }
     }
 }

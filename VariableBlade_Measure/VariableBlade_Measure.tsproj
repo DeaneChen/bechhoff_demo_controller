@@ -2,7 +2,16 @@
 <TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.59">
 	<DataTypes>
 		<DataType>
-			<Name GUID="{18071995-0000-0000-0000-002000000001}" IecBaseType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..0] OF BIT</Name>
+			<Name GUID="{CB182E9B-438F-9DEC-C42C-37428084161D}" IecBaseType="true" AutoDeleteType="true">ARRAY [0..21] OF USINT</Name>
+			<BitSize>176</BitSize>
+			<BaseType GUID="{18071995-0000-0000-0000-000000000002}">USINT</BaseType>
+			<ArrayInfo>
+				<LBound>0</LBound>
+				<Elements>22</Elements>
+			</ArrayInfo>
+		</DataType>
+		<DataType>
+			<Name GUID="{18071995-0000-0000-0000-002000000001}" IecBaseType="true" BitType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..0] OF BIT</Name>
 			<BitSize>1</BitSize>
 			<BaseType GUID="{18071995-0000-0000-0000-000000000010}">BIT</BaseType>
 			<ArrayInfo>
@@ -11,7 +20,7 @@
 			</ArrayInfo>
 		</DataType>
 		<DataType>
-			<Name GUID="{18071995-0000-0000-0000-002000000005}" IecBaseType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..4] OF BIT</Name>
+			<Name GUID="{18071995-0000-0000-0000-002000000005}" IecBaseType="true" BitType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..4] OF BIT</Name>
 			<BitSize>5</BitSize>
 			<BaseType GUID="{18071995-0000-0000-0000-000000000010}">BIT</BaseType>
 			<ArrayInfo>
@@ -20,7 +29,7 @@
 			</ArrayInfo>
 		</DataType>
 		<DataType>
-			<Name GUID="{18071995-0000-0000-0000-002000000004}" IecBaseType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..3] OF BIT</Name>
+			<Name GUID="{18071995-0000-0000-0000-002000000004}" IecBaseType="true" BitType="true" AutoDeleteType="true" HideSubItems="true">ARRAY [0..3] OF BIT</Name>
 			<BitSize>4</BitSize>
 			<BaseType GUID="{18071995-0000-0000-0000-000000000010}">BIT</BaseType>
 			<ArrayInfo>
@@ -65,7 +74,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{09CF9BB9-1956-4E4C-BB5A-830DBDAE1DA0}" Name="main" PrjFilePath="main\main.plcproj" TmcFilePath="main\main.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{98859484-4377-9231-6F5B-3840C52962F6}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="main\main.tmc" TmcHash="{8F1B6E8A-8E94-1E89-E9FA-0BC57F3623F3}">
 					<Name>main Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="1">
@@ -77,6 +86,51 @@
       EL3742 -> Ch2 Sample 0 -> Ch2 Value
     ]]></Comment>
 							<Type>INT</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch1_Status</Name>
+							<Comment><![CDATA[
+      EL6022 process data mapping placeholders.
+      Map these in TwinCAT I/O Mapping to:
+        Term 6 (EL6022) -> COM Inputs/Outputs Channel 1/2
+      Notes:
+        - Status/Ctrl are WORD. Typically: low byte = flags, high byte = length (bytes).
+        - Data arrays are 22 bytes (0..21).
+    
+ Channel 1]]></Comment>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch1_DataIn</Name>
+							<Type GUID="{CB182E9B-438F-9DEC-C42C-37428084161D}">ARRAY [0..21] OF USINT</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch2_Status</Name>
+							<Comment><![CDATA[ Channel 2]]></Comment>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch2_DataIn</Name>
+							<Type GUID="{CB182E9B-438F-9DEC-C42C-37428084161D}">ARRAY [0..21] OF USINT</Type>
+						</Var>
+					</Vars>
+					<Vars VarGrpType="2" AreaNo="1">
+						<Name>PlcTask Outputs</Name>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch1_Ctrl</Name>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch1_DataOut</Name>
+							<Type GUID="{CB182E9B-438F-9DEC-C42C-37428084161D}">ARRAY [0..21] OF USINT</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch2_Ctrl</Name>
+							<Type>WORD</Type>
+						</Var>
+						<Var>
+							<Name>GVL_EL6022_IO.EL6022_Ch2_DataOut</Name>
+							<Type GUID="{CB182E9B-438F-9DEC-C42C-37428084161D}">ARRAY [0..21] OF USINT</Type>
 						</Var>
 					</Vars>
 					<Contexts>
@@ -2221,9 +2275,104 @@ Bit1: Value smaller than Limit1]]></Comment>
 		</Io>
 	</Project>
 	<Mappings>
+		<MappingInfo Identifier="{00000000-2001-0850-0020-500810000403}" Id="#x02030010"/>
 		<OwnerA Name="TIPC^main^main Instance">
 			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 4 (EL3742)">
 				<Link VarA="PlcTask Inputs^GVL_PcDemo.EL3742_Ch2_Sample0_Raw" VarB="Ch2 Sample 0^Ch2 Value"/>
+			</OwnerB>
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 6 (EL6022)">
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 0"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 1" Size="8" OffsA="8"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 10" Size="8" OffsA="80"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 11" Size="8" OffsA="88"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 12" Size="8" OffsA="96"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 13" Size="8" OffsA="104"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 14" Size="8" OffsA="112"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 15" Size="8" OffsA="120"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 16" Size="8" OffsA="128"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 17" Size="8" OffsA="136"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 18" Size="8" OffsA="144"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 19" Size="8" OffsA="152"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 2" Size="8" OffsA="16"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 20" Size="8" OffsA="160"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 21" Size="8" OffsA="168"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 3" Size="8" OffsA="24"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 4" Size="8" OffsA="32"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 5" Size="8" OffsA="40"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 6" Size="8" OffsA="48"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 7" Size="8" OffsA="56"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 8" Size="8" OffsA="64"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 9" Size="8" OffsA="72"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_Status" VarB="COM Inputs Channel 1^Status"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 0"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 1" Size="8" OffsA="8"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 10" Size="8" OffsA="80"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 11" Size="8" OffsA="88"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 12" Size="8" OffsA="96"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 13" Size="8" OffsA="104"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 14" Size="8" OffsA="112"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 15" Size="8" OffsA="120"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 16" Size="8" OffsA="128"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 17" Size="8" OffsA="136"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 18" Size="8" OffsA="144"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 19" Size="8" OffsA="152"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 2" Size="8" OffsA="16"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 20" Size="8" OffsA="160"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 21" Size="8" OffsA="168"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 3" Size="8" OffsA="24"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 4" Size="8" OffsA="32"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 5" Size="8" OffsA="40"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 6" Size="8" OffsA="48"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 7" Size="8" OffsA="56"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 8" Size="8" OffsA="64"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_DataIn" VarB="COM Inputs Channel 2^Data In 9" Size="8" OffsA="72"/>
+				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch2_Status" VarB="COM Inputs Channel 2^Status"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_Ctrl" VarB="COM Outputs Channel 1^Ctrl"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 0"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 1" Size="8" OffsA="8"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 10" Size="8" OffsA="80"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 11" Size="8" OffsA="88"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 12" Size="8" OffsA="96"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 13" Size="8" OffsA="104"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 14" Size="8" OffsA="112"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 15" Size="8" OffsA="120"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 16" Size="8" OffsA="128"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 17" Size="8" OffsA="136"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 18" Size="8" OffsA="144"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 19" Size="8" OffsA="152"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 2" Size="8" OffsA="16"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 20" Size="8" OffsA="160"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 21" Size="8" OffsA="168"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 3" Size="8" OffsA="24"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 4" Size="8" OffsA="32"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 5" Size="8" OffsA="40"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 6" Size="8" OffsA="48"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 7" Size="8" OffsA="56"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 8" Size="8" OffsA="64"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch1_DataOut" VarB="COM Outputs Channel 1^Data Out 9" Size="8" OffsA="72"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_Ctrl" VarB="COM Outputs Channel 2^Ctrl"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 0"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 1" Size="8" OffsA="8"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 10" Size="8" OffsA="80"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 11" Size="8" OffsA="88"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 12" Size="8" OffsA="96"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 13" Size="8" OffsA="104"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 14" Size="8" OffsA="112"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 15" Size="8" OffsA="120"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 16" Size="8" OffsA="128"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 17" Size="8" OffsA="136"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 18" Size="8" OffsA="144"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 19" Size="8" OffsA="152"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 2" Size="8" OffsA="16"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 20" Size="8" OffsA="160"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 21" Size="8" OffsA="168"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 3" Size="8" OffsA="24"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 4" Size="8" OffsA="32"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 5" Size="8" OffsA="40"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 6" Size="8" OffsA="48"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 7" Size="8" OffsA="56"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 8" Size="8" OffsA="64"/>
+				<Link VarA="PlcTask Outputs^GVL_EL6022_IO.EL6022_Ch2_DataOut" VarB="COM Outputs Channel 2^Data Out 9" Size="8" OffsA="72"/>
 			</OwnerB>
 		</OwnerA>
 	</Mappings>

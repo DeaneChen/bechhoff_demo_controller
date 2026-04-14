@@ -34,6 +34,30 @@
 - PLC 侧示例逻辑在：`VariableBlade_Measure/main/POUs/MAIN.TcPOU`
 - PC 侧可用：`PcHostConsole.exe --ams <AmsNetId> read-i16 GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy`
 
+## Demo：EL6022 RS-485 自收自发（Ch1↔Ch2）
+
+- PLC 侧 I/O 映射占位：`VariableBlade_Measure/main/GVLs/GVL_EL6022_IO.TcGVL`
+  - 需要把 EL6022 的以下过程数据映射到 GVL（输入用 `AT %I*`、输出用 `AT %Q*`）：
+    - `COM Inputs Channel 1`：`Status (WORD)` → `GVL_EL6022_IO.EL6022_Ch1_Status`；`Data In 0..21` → `GVL_EL6022_IO.EL6022_Ch1_DataIn[0..21]`
+    - `COM Outputs Channel 1`：`Ctrl (WORD)` → `GVL_EL6022_IO.EL6022_Ch1_Ctrl`；`Data Out 0..21` → `GVL_EL6022_IO.EL6022_Ch1_DataOut[0..21]`
+    - `COM Inputs Channel 2`：同理映射到 `Ch2_*`
+    - `COM Outputs Channel 2`：同理映射到 `Ch2_*`
+- PLC 侧 PC 交互变量：`VariableBlade_Measure/main/GVLs/GVL_Rs485Demo.TcGVL`
+- `Status/Ctrl` 位定义（按 EL6022 PDO 常见约定）：
+  - `WORD` 低字节：位标志；高字节：长度（bytes）
+  - `Ctrl` bit0=`Transmit request`，bit1=`Receive accepted`，bit2=`Init request`，bit3=`Send continuous`，高字节=`Output length`
+  - `Status` bit0=`Transmit accepted`，bit1=`Receive request`，bit2=`Init accepted`，bit3=`Buffer full`，bit4=`Parity error`，bit5=`Framing error`，bit6=`Overrun error`，高字节=`Input length`
+- 上位机回环测试：`PcHostConsole.exe --ams <AmsNetId> el6022-loopback --tx-ch 1 --hex \"01 02 03\" --timeout-ms 2000`
+
+## TwinCAT ST 兼容性注意事项（本工程）
+
+- 在当前 TwinCAT/XAE 编译器设置下，避免使用以下写法：
+  - 命名参数形式：`SHL(IN := ..., N := ...)` / `SHR(IN := ..., N := ...)`
+  - “类型名当函数”的强转：`WORD(x)` / `USINT(x)`
+- 推荐使用更通用写法：
+  - 移位：`SHL(x, 8)` / `SHR(x, 8)`（2 个操作数）
+  - 类型转换：`USINT_TO_WORD(...)`、`WORD_TO_USINT(...)` 等显式转换函数
+
 ## 修改约定（重要）
 
 - 尽量不要手工编辑 `VariableBlade_Measure/_Boot/**` 与 `VariableBlade_Measure/_Config/**`：

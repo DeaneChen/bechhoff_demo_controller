@@ -3,15 +3,96 @@
   <POU Name="MAIN" Id="{7d47c4d8-afbc-4278-8b7f-8e4ca1a04aee}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM MAIN
 VAR
+    initCh1Done : BOOL;
+    initCh2Done : BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[GVL_PcDemo.MainCycleCounter := GVL_PcDemo.MainCycleCounter + 1;
 GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy := GVL_PcDemo.EL3742_Ch2_Sample0_Raw;
+
+// --- EL6022 RS-485 demo loopback (Ch1 <-> Ch2) ---
+GVL_Rs485Demo.Debug_Ch1_Status := GVL_EL6022_IO.EL6022_Ch1_Status;
+GVL_Rs485Demo.Debug_Ch2_Status := GVL_EL6022_IO.EL6022_Ch2_Status;
+GVL_Rs485Demo.Debug_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl;
+GVL_Rs485Demo.Debug_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl;
+
+// One-time init handshake (Ctrl bit2 / Status bit2)
+IF NOT initCh1Done THEN
+    GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl OR 16#0004;
+    IF (GVL_EL6022_IO.EL6022_Ch1_Status AND 16#0004) <> 0 THEN
+        GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#FFFB;
+        initCh1Done := TRUE;
+    END_IF
+END_IF
+
+IF NOT initCh2Done THEN
+    GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl OR 16#0004;
+    IF (GVL_EL6022_IO.EL6022_Ch2_Status AND 16#0004) <> 0 THEN
+        GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#FFFB;
+        initCh2Done := TRUE;
+    END_IF
+END_IF
+
+// TX handshake: low byte bits: b0=TxReq, b1=RxAck, b2=InitReq, b3=SendContinuous, high byte = length
+IF (GVL_Rs485Demo.TxBusy = FALSE) AND (GVL_Rs485Demo.TxSeq <> GVL_Rs485Demo.TxDoneSeq) THEN
+    // Prepare control word for selected TX channel
+    IF GVL_Rs485Demo.TxUseCh2 THEN
+        // Copy TX payload
+        GVL_EL6022_IO.EL6022_Ch2_DataOut := GVL_Rs485Demo.TxData;
+        // Set length (high byte) and TxReq (bit0)
+        GVL_EL6022_IO.EL6022_Ch2_Ctrl := (GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#00FF) OR 16#0001 OR SHL(USINT_TO_WORD(GVL_Rs485Demo.TxLen), 8);
+    ELSE
+        GVL_EL6022_IO.EL6022_Ch1_DataOut := GVL_Rs485Demo.TxData;
+        GVL_EL6022_IO.EL6022_Ch1_Ctrl := (GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#00FF) OR 16#0001 OR SHL(USINT_TO_WORD(GVL_Rs485Demo.TxLen), 8);
+    END_IF
+
+    GVL_Rs485Demo.TxBusy := TRUE;
+END_IF
+
+// Observe Tx accepted on the selected channel (Status bit0)
+IF GVL_Rs485Demo.TxBusy THEN
+    IF GVL_Rs485Demo.TxUseCh2 THEN
+        IF (GVL_EL6022_IO.EL6022_Ch2_Status AND 16#0001) <> 0 THEN
+            // Clear TxReq bit after accepted
+            GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#FFFE;
+            GVL_Rs485Demo.TxDoneSeq := GVL_Rs485Demo.TxSeq;
+            GVL_Rs485Demo.TxBusy := FALSE;
+        END_IF
+    ELSE
+        IF (GVL_EL6022_IO.EL6022_Ch1_Status AND 16#0001) <> 0 THEN
+            GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#FFFE;
+            GVL_Rs485Demo.TxDoneSeq := GVL_Rs485Demo.TxSeq;
+            GVL_Rs485Demo.TxBusy := FALSE;
+        END_IF
+    END_IF
+END_IF
+
+// RX handling: Status bit1=Receive request, high byte = input length
+IF (GVL_EL6022_IO.EL6022_Ch1_Status AND 16#0002) <> 0 THEN
+    GVL_Rs485Demo.RxFromCh2 := FALSE;
+    GVL_Rs485Demo.RxStatus := GVL_EL6022_IO.EL6022_Ch1_Status;
+    GVL_Rs485Demo.RxLen := WORD_TO_USINT(SHR(GVL_EL6022_IO.EL6022_Ch1_Status, 8));
+    GVL_Rs485Demo.RxData := GVL_EL6022_IO.EL6022_Ch1_DataIn;
+    GVL_Rs485Demo.RxSeq := GVL_Rs485Demo.RxSeq + 1;
+    // Acknowledge receive (Ctrl bit1)
+    GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl OR 16#0002;
+ELSIF (GVL_EL6022_IO.EL6022_Ch2_Status AND 16#0002) <> 0 THEN
+    GVL_Rs485Demo.RxFromCh2 := TRUE;
+    GVL_Rs485Demo.RxStatus := GVL_EL6022_IO.EL6022_Ch2_Status;
+    GVL_Rs485Demo.RxLen := WORD_TO_USINT(SHR(GVL_EL6022_IO.EL6022_Ch2_Status, 8));
+    GVL_Rs485Demo.RxData := GVL_EL6022_IO.EL6022_Ch2_DataIn;
+    GVL_Rs485Demo.RxSeq := GVL_Rs485Demo.RxSeq + 1;
+    GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl OR 16#0002;
+ELSE
+    // Drop RxAck bits when no receive request pending
+    GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#FFFD;
+    GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#FFFD;
+END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="2" Count="2" />
+      <LineId Id="2" Count="52" />
     </LineIds>
   </POU>
 </TcPlcObject>

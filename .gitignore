@@ -1,0 +1,3 @@
+# User-specific TwinCAT artifacts
+*.project.~u
+
