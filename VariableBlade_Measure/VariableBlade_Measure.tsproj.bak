@@ -182,9 +182,9 @@
 					<Box Id="12" BoxType="9099">
 						<Name>Term 12 (EL3742)</Name>
 						<ImageId>33</ImageId>
-						<EtherCAT SlaveType="1" PdiType="#x0106" CycleMBoxPollingTime="0" VendorId="#x00000002" ProductCode="#x0e9e3052" RevisionNo="#x00030000" InfoDataDcTimes="true" PortPhys="51" PdoOvsFactor="1" MaxSlotCount="256" MaxSlotGroupCount="1" SlotPdoIncrement="1" SlotIndexIncrement="16" Type="EL3742 2Ch. Ana. Input 0-20mA, 16bit, DIFF, Oversample" Desc="EL3742" PortABoxInfo="#x0100000b">
-							<SyncMan>001004002000010004000000000000000000001020010000</SyncMan>
-							<SyncMan>001404002000010004000000000000000000001420010000</SyncMan>
+						<EtherCAT SlaveType="1" PdiType="#x0106" CycleMBoxPollingTime="0" VendorId="#x00000002" ProductCode="#x0e9e3052" RevisionNo="#x00030000" InfoDataDcTimes="true" PortPhys="51" PdoOvsFactor="2" MaxSlotCount="256" MaxSlotGroupCount="1" SlotPdoIncrement="1" SlotIndexIncrement="16" Type="EL3742 2Ch. Ana. Input 0-20mA, 16bit, DIFF, Oversample" Desc="EL3742" PortABoxInfo="#x0100000b">
+							<SyncMan>001006002000010004000000000000000000001020010000</SyncMan>
+							<SyncMan>001406002000010004000000000000000000001420010000</SyncMan>
 							<SyncMan>980900000000000004000000000000000000980900040000</SyncMan>
 							<Fmmu>0000000000000000001000010100000002000000060000000000000000000000</Fmmu>
 							<Fmmu>0000000000000000001400010100000002000000060000000100000000000000</Fmmu>
@@ -193,7 +193,7 @@
 							<SuName></SuName>
 							<SuName></SuName>
 							<SuName></SuName>
-							<DcData>3007000000000000f0d8ffff00000000ffffffff000100000000000000000000</DcData>
+							<DcData>3007000000000000f0d8ffff00000000feffffff000100000000000000000000</DcData>
 							<DcMode>446353796e630000000000000000000032204368616e6e656c730000000000000000000000000000000000000000000000000000f0d8ffff00000000ffff3007ffff0400000000000000010a1027000000000000000000000000000000000000001b0000001a0001011b0100801a0101</DcMode>
 							<DcMode>446353796e632d31000000000000000031204368616e6e656c000000000000000000000000000000000000000000000000000000f0d8ffff00000000ffff3007ffff0200000000000000010a8813000000000000000000000000000000000000001b0000001a0001</DcMode>
 							<Pdo Name="Ch1 CycleCount" Index="#x1b00" Flags="#x0011" SyncMan="0">
@@ -206,7 +206,7 @@
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 1" Index="#x1a01" Flags="#x0014" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 1" Index="#x1a01" Flags="#x0014" SyncMan="0" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6010" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
@@ -707,11 +707,11 @@
 								</Entry>
 							</Pdo>
 							<Pdo Name="Ch2 Sample 0" Index="#x1a80" Flags="#x0011" SyncMan="1" OverSampleFac="1" OverSampleMin="1" OverSampleMax="100" OverSampleInc="16">
-								<Entry Name="Ch2 Value" Index="#x6000" Sub="#x02" Flags="#x00030000">
+								<Entry Name="Ch2 Value" Index="#x6000" Sub="#x02" Flags="#x00040000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 1" Index="#x1a81" Flags="#x0014" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 1" Index="#x1a81" Flags="#x0014" SyncMan="1" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6010" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
