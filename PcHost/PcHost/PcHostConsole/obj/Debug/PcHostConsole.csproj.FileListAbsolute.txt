@@ -1,0 +1,10 @@
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\bin\Debug\PcHostConsole.exe.config
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\bin\Debug\PcHostConsole.exe
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\bin\Debug\PcHostConsole.pdb
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\bin\Debug\PcHost.Core.dll
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\bin\Debug\PcHost.Core.pdb
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\obj\Debug\PcHostConsole.csproj.AssemblyReference.cache
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\obj\Debug\PcHostConsole.csproj.CoreCompileInputs.cache
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\obj\Debug\PcHostConsole.csproj.CopyComplete
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\obj\Debug\PcHostConsole.exe
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHostConsole\obj\Debug\PcHostConsole.pdb

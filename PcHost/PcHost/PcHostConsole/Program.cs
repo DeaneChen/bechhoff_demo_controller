@@ -94,6 +94,25 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "read-i16", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-i16 <SYMBOL>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        short value = plc.ReadSymbol<short>(symbol);
+                        Console.WriteLine(value.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    return 0;
+                }
+
                 if (string.Equals(command, "write-u32", StringComparison.OrdinalIgnoreCase))
                 {
                     if (index + 2 >= args.Length)
@@ -109,6 +128,99 @@ namespace PcHostConsole
                     {
                         plc.Connect(settings);
                         plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "watch-i16", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    int periodMs = 10;
+                    string outCsv = null;
+
+                    int i = index + 2;
+                    while (i < args.Length)
+                    {
+                        string k = args[i];
+                        if (string.Equals(k, "--ms", StringComparison.OrdinalIgnoreCase))
+                        {
+                            periodMs = int.Parse(RequireArg(args, ref i, "--ms"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--out", StringComparison.OrdinalIgnoreCase))
+                        {
+                            outCsv = RequireArg(args, ref i, "--out");
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Unknown watch-i16 option: " + k);
+                            return 2;
+                        }
+
+                        i++;
+                    }
+
+                    Console.WriteLine("Connecting to " + amsNetId + ":" + port);
+                    Console.WriteLine("Watching: " + symbol);
+                    Console.WriteLine("Period (ms): " + periodMs.ToString(CultureInfo.InvariantCulture));
+                    if (!string.IsNullOrWhiteSpace(outCsv))
+                    {
+                        Console.WriteLine("CSV: " + Path.GetFullPath(outCsv));
+                    }
+                    Console.WriteLine("Press Ctrl+C to stop.");
+
+                    var cts = new CancellationTokenSource();
+                    Console.CancelKeyPress += (s, e) =>
+                    {
+                        e.Cancel = true;
+                        cts.Cancel();
+                    };
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        StreamWriter writer = null;
+                        try
+                        {
+                            if (!string.IsNullOrWhiteSpace(outCsv))
+                            {
+                                writer = new StreamWriter(new FileStream(outCsv, FileMode.Append, FileAccess.Write, FileShare.Read));
+                                writer.WriteLine("pc_utc_iso,value");
+                                writer.Flush();
+                            }
+
+                            while (!cts.IsCancellationRequested)
+                            {
+                                short value = plc.ReadSymbol<short>(symbol);
+                                string ts = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+
+                                if (writer != null)
+                                {
+                                    writer.WriteLine(ts + "," + value.ToString(CultureInfo.InvariantCulture));
+                                    writer.Flush();
+                                }
+                                else
+                                {
+                                    Console.WriteLine(ts + " " + value.ToString(CultureInfo.InvariantCulture));
+                                }
+
+                                Thread.Sleep(periodMs);
+                            }
+                        }
+                        finally
+                        {
+                            if (writer != null)
+                            {
+                                writer.Dispose();
+                            }
+                        }
                     }
 
                     return 0;
@@ -241,7 +353,9 @@ namespace PcHostConsole
             Console.WriteLine("Commands:");
             Console.WriteLine("  connect");
             Console.WriteLine("  read-u32 <SYMBOL>");
+            Console.WriteLine("  read-i16 <SYMBOL>");
             Console.WriteLine("  write-u32 <SYMBOL> <VALUE>");
+            Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
             Console.WriteLine();
             Console.WriteLine("Notes:");
@@ -249,4 +363,3 @@ namespace PcHostConsole
         }
     }
 }
-

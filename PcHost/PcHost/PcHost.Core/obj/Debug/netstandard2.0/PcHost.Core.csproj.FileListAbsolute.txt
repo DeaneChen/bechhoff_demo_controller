@@ -1,0 +1,10 @@
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\bin\Debug\netstandard2.0\PcHost.Core.deps.json
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\bin\Debug\netstandard2.0\PcHost.Core.dll
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\bin\Debug\netstandard2.0\PcHost.Core.pdb
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.csproj.AssemblyReference.cache
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.GeneratedMSBuildEditorConfig.editorconfig
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.AssemblyInfoInputs.cache
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.AssemblyInfo.cs
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.csproj.CoreCompileInputs.cache
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.dll
+E:\Career\Project_PLC\VariableBlade_Measure\PcHost\PcHost\PcHost.Core\obj\Debug\netstandard2.0\PcHost.Core.pdb

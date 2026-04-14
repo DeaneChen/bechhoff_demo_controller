@@ -6,10 +6,12 @@ VAR
 END_VAR
 ]]></Declaration>
     <Implementation>
-      <ST><![CDATA[]]></ST>
+      <ST><![CDATA[GVL_PcDemo.MainCycleCounter := GVL_PcDemo.MainCycleCounter + 1;
+GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy := GVL_PcDemo.EL3742_Ch2_Sample0_Raw;
+]]></ST>
     </Implementation>
     <LineIds Name="MAIN">
-      <LineId Id="2" Count="0" />
+      <LineId Id="2" Count="2" />
     </LineIds>
   </POU>
 </TcPlcObject>

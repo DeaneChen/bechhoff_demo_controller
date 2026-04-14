@@ -18,11 +18,21 @@
 - ADS 通信库：`Beckhoff.TwinCAT.Ads`（NuGet，当前在 `PcHost.Core` 引用）
   - 仅装 NuGet 不等于能通讯：PC 侧仍需要有 ADS Router/路由配置（TwinCAT 或 Beckhoff 的 ADS Runtime/Router），并且要添加到目标（PLC）设备的 AMS Route。
   - 直连 169.254.x.x（link-local）时，目标 AMS NetId 通常形如 `169.254.231.128.1.1`（以实际为准）。
+  - 本工程 `VariableBlade_Measure.tsproj` 的 `TargetNetId` 目前为 `5.132.153.117.1.1`（对应你选择的目标 CX-849975）。
+  - `PcHostConsole` 采用 SDK-style `csproj`，Release 输出目录会自动带上 `TwinCAT.Ads*.dll` 等运行时依赖；请从 `PcHostConsole/bin/Release` 目录运行可执行文件。
 
 ## 高频采集注意事项（500~2000Hz）
 
 - 不建议 PC 以 0.5~2ms 周期“逐点 ADS Read”取样：Windows 调度抖动 + ADS 往返开销会导致不稳定。
 - 建议方案：PLC 内部高速任务采集 → 写入环形缓冲（带 `t_us/t_ms` 时间戳）→ PC 以较低频率批量拉取/订阅（例如 50~200Hz）并在本地落盘还原为 2kHz 数据流。
+
+## Demo：EL3742 Ch2 Sample0 读取
+
+- PLC 侧已添加示例 GVL：`VariableBlade_Measure/main/GVLs/GVL_PcDemo.TcGVL`
+  - 需要在 TwinCAT I/O Mapping 中把 `EL3742 -> Ch2 Sample 0 -> Ch2 Value` 链接到 `GVL_PcDemo.EL3742_Ch2_Sample0_Raw`
+  - 如果 I/O Mapping 的变量选择窗口里“看不到 PLC 变量”，可将待映射变量声明为显式 I/O 地址占位：输入用 `AT %I*`、输出用 `AT %Q*`（例如 `EL3742_Ch2_Sample0_Raw AT %I*: INT;`），再进行 Link。
+- PLC 侧示例逻辑在：`VariableBlade_Measure/main/POUs/MAIN.TcPOU`
+- PC 侧可用：`PcHostConsole.exe --ams <AmsNetId> read-i16 GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy`
 
 ## 修改约定（重要）
 

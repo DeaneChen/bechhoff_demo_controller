@@ -65,15 +65,34 @@
 		</System>
 		<Plc>
 			<Project GUID="{09CF9BB9-1956-4E4C-BB5A-830DBDAE1DA0}" Name="main" PrjFilePath="main\main.plcproj" TmcFilePath="main\main.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcHash="{98859484-4377-9231-6F5B-3840C52962F6}">
 					<Name>main Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
+					<Vars VarGrpType="1">
+						<Name>PlcTask Inputs</Name>
+						<Var>
+							<Name>GVL_PcDemo.EL3742_Ch2_Sample0_Raw</Name>
+							<Comment><![CDATA[
+      Demo input to be linked in TwinCAT I/O mapping:
+      EL3742 -> Ch2 Sample 0 -> Ch2 Value
+    ]]></Comment>
+							<Type>INT</Type>
+						</Var>
+					</Vars>
 					<Contexts>
 						<Context>
-							<Id>1</Id>
-							<Name>Default</Name>
+							<Id>0</Id>
+							<Name>PlcTask</Name>
+							<ManualConfig>
+								<OTCID>#x02010030</OTCID>
+							</ManualConfig>
+							<Priority>20</Priority>
+							<CycleTime>10000000</CycleTime>
 						</Context>
 					</Contexts>
+					<TaskPouOids>
+						<TaskPouOid Prio="20" OTCID="#x08502001"/>
+					</TaskPouOids>
 				</Instance>
 			</Project>
 		</Plc>
@@ -213,9 +232,9 @@
 					<Box Id="4" BoxType="9099">
 						<Name>Term 4 (EL3742)</Name>
 						<ImageId>33</ImageId>
-						<EtherCAT SlaveType="1" PdiType="#x0106" CycleMBoxPollingTime="0" VendorId="#x00000002" ProductCode="#x0e9e3052" RevisionNo="#x00030000" InfoDataDcTimes="true" PortPhys="51" PdoOvsFactor="10" MaxSlotCount="256" MaxSlotGroupCount="1" SlotPdoIncrement="1" SlotIndexIncrement="16" Type="EL3742 2Ch. Ana. Input 0-20mA, 16bit, DIFF, Oversample" Desc="EL3742" PortABoxInfo="#x01000003">
-							<SyncMan>001016002000010004000000000000000000001020010000</SyncMan>
-							<SyncMan>001416002000010004000000000000000000001420010000</SyncMan>
+						<EtherCAT SlaveType="1" PdiType="#x0106" CycleMBoxPollingTime="0" VendorId="#x00000002" ProductCode="#x0e9e3052" RevisionNo="#x00030000" InfoDataDcTimes="true" PortPhys="51" PdoOvsFactor="1" MaxSlotCount="256" MaxSlotGroupCount="1" SlotPdoIncrement="1" SlotIndexIncrement="16" Type="EL3742 2Ch. Ana. Input 0-20mA, 16bit, DIFF, Oversample" Desc="EL3742" PortABoxInfo="#x01000003">
+							<SyncMan>001004002000010004000000000000000000001020010000</SyncMan>
+							<SyncMan>001404002000010004000000000000000000001420010000</SyncMan>
 							<SyncMan>980900000000000004000000000000000000980900040000</SyncMan>
 							<Fmmu>0000000000000000001000010100000002000000060000000000000000000000</Fmmu>
 							<Fmmu>0000000000000000001400010100000002000000060000000100000000000000</Fmmu>
@@ -224,7 +243,7 @@
 							<SuName></SuName>
 							<SuName></SuName>
 							<SuName></SuName>
-							<DcData>3007000000000000f0d8ffff00000000f6ffffff000100000000000000000000</DcData>
+							<DcData>3007000000000000f0d8ffff00000000ffffffff000100000000000000000000</DcData>
 							<DcMode>446353796e630000000000000000000032204368616e6e656c730000000000000000000000000000000000000000000000000000f0d8ffff00000000ffff3007ffff0400000000000000010a1027000000000000000000000000000000000000001b0000001a0001011b0100801a0101</DcMode>
 							<DcMode>446353796e632d31000000000000000031204368616e6e656c000000000000000000000000000000000000000000000000000000f0d8ffff00000000ffff3007ffff0200000000000000010a8813000000000000000000000000000000000000001b0000001a0001</DcMode>
 							<Pdo Name="Ch1 CycleCount" Index="#x1b00" Flags="#x0011" SyncMan="0">
@@ -237,47 +256,47 @@
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 1" Index="#x1a01" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 1" Index="#x1a01" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6010" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 2" Index="#x1a02" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 2" Index="#x1a02" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6020" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 3" Index="#x1a03" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 3" Index="#x1a03" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6030" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 4" Index="#x1a04" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 4" Index="#x1a04" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6040" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 5" Index="#x1a05" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 5" Index="#x1a05" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6050" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 6" Index="#x1a06" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 6" Index="#x1a06" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6060" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 7" Index="#x1a07" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 7" Index="#x1a07" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6070" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 8" Index="#x1a08" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 8" Index="#x1a08" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6080" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch1 Sample 9" Index="#x1a09" Flags="#x0014" SyncMan="0" OverSampleInc="16">
+							<Pdo Name="Ch1 Sample 9" Index="#x1a09" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch1 Value" Index="#x6090" Sub="#x01" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
@@ -742,47 +761,47 @@
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 1" Index="#x1a81" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 1" Index="#x1a81" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6010" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 2" Index="#x1a82" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 2" Index="#x1a82" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6020" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 3" Index="#x1a83" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 3" Index="#x1a83" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6030" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 4" Index="#x1a84" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 4" Index="#x1a84" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6040" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 5" Index="#x1a85" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 5" Index="#x1a85" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6050" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 6" Index="#x1a86" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 6" Index="#x1a86" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6060" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 7" Index="#x1a87" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 7" Index="#x1a87" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6070" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 8" Index="#x1a88" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 8" Index="#x1a88" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6080" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
 							</Pdo>
-							<Pdo Name="Ch2 Sample 9" Index="#x1a89" Flags="#x0014" SyncMan="1" OverSampleInc="16">
+							<Pdo Name="Ch2 Sample 9" Index="#x1a89" Flags="#x0014" OverSampleInc="16">
 								<Entry Name="Ch2 Value" Index="#x6090" Sub="#x02" Flags="#x00030000">
 									<Type>INT</Type>
 								</Entry>
@@ -2201,4 +2220,11 @@ Bit1: Value smaller than Limit1]]></Comment>
 			</Device>
 		</Io>
 	</Project>
+	<Mappings>
+		<OwnerA Name="TIPC^main^main Instance">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 4 (EL3742)">
+				<Link VarA="PlcTask Inputs^GVL_PcDemo.EL3742_Ch2_Sample0_Raw" VarB="Ch2 Sample 0^Ch2 Value"/>
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
 </TcSmProject>

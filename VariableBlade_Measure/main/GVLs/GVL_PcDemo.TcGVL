@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_PcDemo" Id="{4bca3b36-49cd-4f31-88e6-2d40b7fa6e4a}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      Demo input to be linked in TwinCAT I/O mapping:
+      EL3742 -> Ch2 Sample 0 -> Ch2 Value
+    *)
+    EL3742_Ch2_Sample0_Raw AT %I*: INT;
+
+    (*
+      PLC-side copy / heartbeat for ADS reads.
+    *)
+    EL3742_Ch2_Sample0_RawCopy : INT;
+    MainCycleCounter : ULINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>
