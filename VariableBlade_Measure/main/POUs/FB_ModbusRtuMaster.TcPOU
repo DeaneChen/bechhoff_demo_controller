@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_ModbusRtuMaster" Id="{4e24ec6d-f728-426c-bf69-2ad19d714e3a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_ModbusRtuMaster
+VAR_INPUT
+    Enable : BOOL;
+    Channel : USINT; // 1 or 2
+    SlaveId : USINT; // 1..247
+
+    Req : BOOL;      // start a transaction when TRUE in IDLE
+    Func : USINT;    // 3=Read Holding Registers, 6=Write Single Register, 16=Write Multiple Registers
+    Addr : UINT;     // start address
+    Quantity : USINT; // register count (read or write)
+
+    WriteByteCount : USINT; // for 0x06 (2) or 0x10 (Quantity*2)
+    WriteData : ARRAY [0..21] OF USINT; // big-endian per register
+
+    Timeout : TIME := T#200ms;
+    MinGap : TIME := T#5ms; // minimum silent time between Modbus frames (device compatibility)
+END_VAR
+VAR_OUTPUT
+    PortReady : BOOL;
+    Busy : BOOL;
+    Done : BOOL;
+    Error : BOOL;
+    ErrorId : UDINT;
+    ExceptionCode : USINT;
+
+    ReadRegCount : USINT;
+    ReadRegs : ARRAY [0..7] OF UINT;
+
+    TxLen : USINT;
+    TxFrame : ARRAY [0..21] OF USINT;
+    RxLen : USINT;
+    RxFrame : ARRAY [0..21] OF USINT;
+END_VAR
+VAR
+    fbPort : FB_EL6022_Port;
+
+    reqPrev : BOOL;
+    reqEdge : BOOL;
+
+    state : USINT;
+    opFunc : USINT;
+    opAddr : UINT;
+    opQty : USINT;
+    opWbc : USINT;
+    opWData : ARRAY [0..21] OF USINT;
+
+    txStart : BOOL;
+    txStartPrev : BOOL;
+
+    rxBuf : ARRAY [0..21] OF USINT;
+    rxBufLen : USINT;
+
+    tTimeout : TON;
+
+    i : USINT;
+    crc : WORD;
+    rxCrc : WORD;
+    calcCrc : WORD;
+
+    expectedLen : USINT;
+    byteCount : USINT;
+    regCount : USINT;
+    wbcExpected : USINT;
+
+    gapActive : BOOL;
+    tGap : TON;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Done := FALSE;
+Error := FALSE;
+ExceptionCode := 0;
+
+// Backward compatible: keep the edge vars, but do not require a rising edge.
+reqEdge := Req AND NOT reqPrev;
+reqPrev := Req;
+
+// Keep port running
+fbPort(Enable := Enable, Channel := Channel, TxStart := txStart, TxLen := TxLen, TxData := TxFrame);
+PortReady := fbPort.Ready;
+
+// Minimum silent gap between transactions (prevents back-to-back frames that some devices dislike).
+IF NOT Enable THEN
+    gapActive := FALSE;
+END_IF
+tGap(IN := gapActive, PT := MinGap);
+IF tGap.Q THEN
+    gapActive := FALSE;
+END_IF
+
+// latch RX from port when available
+IF fbPort.RxNew THEN
+    rxBuf := fbPort.RxData;
+    rxBufLen := fbPort.RxLen;
+END_IF
+
+// Timeout timer active only in WAIT_RX state
+tTimeout(IN := (state = 40) AND Busy, PT := Timeout);
+
+CASE state OF
+0: // IDLE
+    Busy := FALSE;
+    ErrorId := 0;
+    ReadRegCount := 0;
+    rxBufLen := 0;
+    RxLen := 0;
+    TxLen := 0;
+    txStart := FALSE;
+
+    IF Req AND (NOT gapActive) THEN
+        opFunc := Func;
+        opAddr := Addr;
+        opQty := Quantity;
+        opWbc := WriteByteCount;
+        opWData := WriteData;
+        state := 10;
+    END_IF
+
+10: // WAIT_PORT_READY
+    Busy := TRUE;
+    txStart := FALSE;
+    IF NOT Enable THEN
+        state := 0;
+    ELSIF PortReady THEN
+        state := 20;
+    END_IF
+
+20: // BUILD + TX_START
+    // Clear any previously latched RX for this new transaction
+    rxBufLen := 0;
+
+    // Build frame into TxFrame
+    FOR i := 0 TO 21 DO
+        TxFrame[i] := 0;
+    END_FOR
+
+    TxFrame[0] := SlaveId;
+    TxFrame[1] := opFunc;
+    TxFrame[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(opAddr), 8));
+    TxFrame[3] := WORD_TO_USINT(UINT_TO_WORD(opAddr) AND 16#00FF);
+    TxFrame[4] := WORD_TO_USINT(SHR(USINT_TO_WORD(opQty), 8));
+    TxFrame[5] := opQty;
+
+    IF opFunc = 16 THEN
+        // Safety: EL6022 data length is 22 bytes, TxFrame is [0..21].
+        // Modbus 0x10 frame length = 7 + byteCount + 2, so byteCount must be <= 13 (and even).
+        wbcExpected := opQty + opQty; // opQty * 2
+        IF (opWbc = 0) OR (opWbc <> wbcExpected) OR (opWbc > 12) THEN
+            Error := TRUE;
+            ErrorId := 16#00010008; // invalid write byte count / frame too long
+            Busy := FALSE;
+            state := 70;
+            RETURN;
+        END_IF
+
+        // Write multiple registers (0x10):
+        // [6]=byteCount, [7..]=data bytes (big-endian per register)
+        TxFrame[6] := opWbc;
+        IF opWbc > 0 THEN
+            FOR i := 0 TO opWbc - 1 DO
+                TxFrame[7 + i] := opWData[i];
+            END_FOR
+        END_IF
+        TxLen := 7 + opWbc + 2;
+    ELSIF opFunc = 6 THEN
+        // Write single register: WriteData[0..1] are hi/lo bytes
+        TxFrame[4] := opWData[0];
+        TxFrame[5] := opWData[1];
+        TxLen := 8;
+    ELSE
+        // Read holding registers (0x03)
+        opFunc := 3;
+        TxFrame[1] := opFunc;
+        TxLen := 8;
+    END_IF
+
+    // CRC (low byte first)
+    crc := F_ModbusCrc16(TxFrame, TxLen - 2);
+    TxFrame[TxLen - 2] := WORD_TO_USINT(crc AND 16#00FF);
+    TxFrame[TxLen - 1] := WORD_TO_USINT(SHR(crc, 8));
+
+    // start TX (one-cycle pulse)
+    txStart := TRUE;
+    state := 30;
+
+30: // WAIT_TX_DONE
+    // drop TX start pulse after one cycle
+    txStart := FALSE;
+    IF fbPort.TxDone THEN
+        state := 40;
+    END_IF
+
+40: // WAIT_RX
+    IF tTimeout.Q THEN
+        Error := TRUE;
+        ErrorId := 16#00010001; // timeout
+        Busy := FALSE;
+        state := 70;
+    ELSIF rxBufLen > 0 THEN
+        state := 50;
+    END_IF
+
+50: // PARSE
+    // copy for debug output
+    RxFrame := rxBuf;
+    RxLen := rxBufLen;
+
+    IF rxBufLen < 5 THEN
+        Error := TRUE;
+        ErrorId := 16#00010002; // short frame
+        Busy := FALSE;
+        state := 70;
+        RETURN;
+    END_IF
+
+    // CRC check
+    rxCrc := USINT_TO_WORD(rxBuf[rxBufLen - 2]) OR SHL(USINT_TO_WORD(rxBuf[rxBufLen - 1]), 8);
+    calcCrc := F_ModbusCrc16(rxBuf, rxBufLen - 2);
+    IF rxCrc <> calcCrc THEN
+        Error := TRUE;
+        ErrorId := 16#00010003; // crc mismatch
+        Busy := FALSE;
+        state := 70;
+        RETURN;
+    END_IF
+
+    // Basic header check
+    IF rxBuf[0] <> SlaveId THEN
+        Error := TRUE;
+        ErrorId := 16#00010004; // wrong slave id
+        Busy := FALSE;
+        state := 70;
+        RETURN;
+    END_IF
+
+    // Exception response
+    IF rxBuf[1] = (opFunc + 16#80) THEN
+        ExceptionCode := rxBuf[2];
+        Error := TRUE;
+        ErrorId := 16#00010005; // exception
+        Busy := FALSE;
+        state := 70;
+        RETURN;
+    END_IF
+
+    // Expected responses
+    IF opFunc = 3 THEN
+        byteCount := rxBuf[2];
+        expectedLen := 5 + byteCount;
+        IF rxBufLen <> expectedLen THEN
+            Error := TRUE;
+            ErrorId := 16#00010006; // length mismatch
+            Busy := FALSE;
+            state := 70;
+            RETURN;
+        END_IF
+
+        regCount := byteCount / 2;
+        IF regCount > 8 THEN
+            regCount := 8;
+        END_IF
+        ReadRegCount := regCount;
+        FOR i := 0 TO regCount - 1 DO
+            ReadRegs[i] := SHL(USINT_TO_UINT(rxBuf[3 + (2 * i)]), 8) OR USINT_TO_UINT(rxBuf[4 + (2 * i)]);
+        END_FOR
+    ELSE
+        // Write responses are fixed 8 bytes
+        IF rxBufLen <> 8 THEN
+            Error := TRUE;
+            ErrorId := 16#00010007; // write response length mismatch
+            Busy := FALSE;
+            state := 70;
+            RETURN;
+        END_IF
+    END_IF
+
+    Done := TRUE;
+    Busy := FALSE;
+    gapActive := TRUE;
+    state := 60;
+
+60: // DONE (one cycle)
+    state := 0;
+
+70: // ERROR (one cycle)
+    gapActive := TRUE;
+    state := 0;
+
+ELSE
+    state := 0;
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_ModbusRtuMaster">
+      <LineId Id="1" Count="231" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

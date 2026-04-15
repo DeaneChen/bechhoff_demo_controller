@@ -33,6 +33,21 @@
     <Compile Include="GVLs\GVL_Rs485Demo.TcGVL">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="GVLs\GVL_NimServo.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\F_ModbusCrc16.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_EL6022_Port.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_ModbusRtuMaster.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_NimServo.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="DUTs" />

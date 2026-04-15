@@ -1,0 +1,991 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_NimServo" Id="{293ec278-be26-4c74-9a40-96f2ea94a738}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_NimServo
+VAR_INPUT
+    Enable : BOOL;
+    Channel : USINT;
+    SlaveId : USINT;
+
+    AutoSetCia402Mode : BOOL;
+    DesiredMode : USINT; // 2=VM, 9=CSV
+    PowerEnable : BOOL;
+    TargetVelocity : DINT;
+    WordSwap32 : BOOL;
+    TestForceVelocityWrite : BOOL;
+
+    VmSpeedMinRpm : UDINT;
+    VmSpeedMaxRpm : UDINT;
+    VmAccelRpm : UDINT;
+    VmDecelRpm : UDINT;
+
+    CmdSeq : UDINT;
+    Cmd : USINT; // 0=None, 1=FaultReset
+END_VAR
+VAR_OUTPUT
+    CmdAckSeq : UDINT;
+    Busy : BOOL;
+    CommOk : BOOL;
+    CommErrorCount : UDINT;
+    LastErrorId : UDINT;
+
+    ControlMode : USINT;
+    ControlModeOk : BOOL;
+    StatusWord : UINT;
+    ControlWord : UINT;
+
+    Cia402State : USINT;
+    ErrorRegister : USINT;
+    CurrentAlarm : USINT;
+
+    DiSignals : UINT;
+    DoSignals : UINT;
+    DcBusVoltage : UINT;
+    ModuleTemp : INT;
+
+    Di1Func : USINT;
+    Di1Logic : USINT;
+    Di2Func : USINT;
+    Di2Logic : USINT;
+    Di3Func : USINT;
+    Di3Logic : USINT;
+    Di4Func : USINT;
+    Di4Logic : USINT;
+    Di5Func : USINT;
+    Di5Logic : USINT;
+    Di6Func : USINT;
+    Di6Logic : USINT;
+    Di7Func : USINT;
+    Di7Logic : USINT;
+    Di8Func : USINT;
+    Di8Logic : USINT;
+    Di9Func : USINT;
+    Di9Logic : USINT;
+
+    EnableDiIndex : USINT;
+    EnableDiRequired : BOOL;
+    EnableDiActive : BOOL;
+    EnableDiOk : BOOL;
+
+    DriveInternalState : USINT;
+    FpgaSystemStatus : UINT;
+    FpgaSystemFault : UINT;
+    EncoderInternalFault : UINT;
+    FaultRecord : UINT;
+    AbsEncoderWord : UINT;
+
+    ModeDisplay : USINT;
+    ActualVelocity : DINT;
+    ActualPosition : DINT;
+    CurrentFeedback : INT;
+
+    VmTargetSpeedRpm : INT;
+    VmTargetSpeedEffRpm : INT;
+    VmActualSpeedRpm : INT;
+
+    LastTxLen : USINT;
+    LastTx : ARRAY [0..21] OF USINT;
+    LastRxLen : USINT;
+    LastRx : ARRAY [0..21] OF USINT;
+END_VAR
+VAR
+    mb : FB_ModbusRtuMaster;
+    mbReqHold : BOOL;
+    mbFunc : USINT;
+    mbAddr : UINT;
+    mbQty : USINT;
+    mbWbc : USINT;
+    mbWData : ARRAY [0..21] OF USINT;
+
+    op : USINT;
+    step : USINT;
+
+    desiredCtrl : UINT;
+    faultResetPending : BOOL;
+    cmdSeqLatched : UDINT;
+
+    lastTargetVelocity : DINT;
+    velWritePending : BOOL;
+
+    vmCfgPending : BOOL;
+    vmCfgStage : USINT; // 0=min/max, 1=accel/decel, 2=done
+    vmStopPending : BOOL;
+    lastVmSpeedMin : UDINT;
+    lastVmSpeedMax : UDINT;
+    lastVmAccel : UDINT;
+    lastVmDecel : UDINT;
+
+    lastDesiredMode : USINT;
+    modeWritePending : BOOL;
+    enablePrev : BOOL;
+    powerEnablePrev : BOOL;
+    forceCtrlWrite : BOOL;
+
+    cfgDone : BOOL;
+    cfgWritePending : BOOL;
+
+    uTmp : UDINT;
+    hi : UINT;
+    lo : UINT;
+    dw : DWORD;
+
+    di1High : BOOL;
+    di2High : BOOL;
+    di3High : BOOL;
+    di4High : BOOL;
+    di5High : BOOL;
+    di6High : BOOL;
+    di7High : BOOL;
+    di8High : BOOL;
+    di9High : BOOL;
+    diSelHigh : BOOL;
+
+    iTmp : INT;
+
+    tVmStartDelay : TON;
+    driveStatePrev : USINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Enable THEN
+    Busy := FALSE;
+    CommOk := FALSE;
+    mbReqHold := FALSE;
+    op := 0;
+    step := 0;
+    faultResetPending := FALSE;
+    modeWritePending := FALSE;
+    enablePrev := FALSE;
+    powerEnablePrev := FALSE;
+    forceCtrlWrite := FALSE;
+    cfgDone := FALSE;
+    cfgWritePending := FALSE;
+    lastDesiredMode := 0;
+    lastTargetVelocity := 0;
+    lastVmSpeedMin := 0;
+    lastVmSpeedMax := 0;
+    lastVmAccel := 0;
+    lastVmDecel := 0;
+
+    Cia402State := 0;
+    ErrorRegister := 0;
+    CurrentAlarm := 0;
+    DiSignals := 0;
+    DoSignals := 0;
+    DcBusVoltage := 0;
+    ModuleTemp := 0;
+    Di1Func := 0;
+    Di1Logic := 0;
+    Di2Func := 0;
+    Di2Logic := 0;
+    Di3Func := 0;
+    Di3Logic := 0;
+    Di4Func := 0;
+    Di4Logic := 0;
+    Di5Func := 0;
+    Di5Logic := 0;
+    Di6Func := 0;
+    Di6Logic := 0;
+    Di7Func := 0;
+    Di7Logic := 0;
+    Di8Func := 0;
+    Di8Logic := 0;
+    Di9Func := 0;
+    Di9Logic := 0;
+    EnableDiIndex := 0;
+    EnableDiRequired := FALSE;
+    EnableDiActive := FALSE;
+    EnableDiOk := FALSE;
+    DriveInternalState := 0;
+    FpgaSystemStatus := 0;
+    FpgaSystemFault := 0;
+    EncoderInternalFault := 0;
+    FaultRecord := 0;
+    AbsEncoderWord := 0;
+
+    VmTargetSpeedRpm := 0;
+    VmTargetSpeedEffRpm := 0;
+    VmActualSpeedRpm := 0;
+    vmCfgPending := FALSE;
+    vmCfgStage := 0;
+    vmStopPending := FALSE;
+    velWritePending := FALSE;
+    ControlWord := 0;
+    tVmStartDelay(IN := FALSE, PT := T#200ms);
+    driveStatePrev := 0;
+    RETURN;
+END_IF
+
+// VM start delay (align with SDK's post-power_on delay)
+tVmStartDelay(IN := PowerEnable, PT := T#200ms);
+
+IF Enable AND (NOT enablePrev) THEN
+    // On enable rising edge: force a mode write at least once
+    modeWritePending := TRUE;
+    vmCfgPending := TRUE;
+    vmCfgStage := 0;
+    forceCtrlWrite := TRUE;
+    velWritePending := TRUE;
+END_IF
+enablePrev := Enable;
+
+// PowerEnable rising edge: re-assert controlword and speed (idempotent start)
+IF PowerEnable AND (NOT powerEnablePrev) THEN
+    forceCtrlWrite := TRUE;
+    velWritePending := TRUE;
+    IF DesiredMode = 2 THEN
+        vmCfgPending := TRUE;
+        vmCfgStage := 0;
+    END_IF
+END_IF
+// PowerEnable falling edge: in VM mode, command target speed = 0 once to ensure stop
+IF (NOT PowerEnable) AND powerEnablePrev THEN
+    IF DesiredMode = 2 THEN
+        vmStopPending := TRUE;
+    END_IF
+END_IF
+powerEnablePrev := PowerEnable;
+
+IF DesiredMode <> lastDesiredMode THEN
+    lastDesiredMode := DesiredMode;
+    modeWritePending := TRUE;
+    vmCfgPending := TRUE;
+    vmCfgStage := 0;
+END_IF
+
+// Track target velocity change (for debug or for normal writes once comm works)
+IF TargetVelocity <> lastTargetVelocity THEN
+    lastTargetVelocity := TargetVelocity;
+    // VM mode uses VM target speed register (H0382), so we should treat it as a pending write too.
+    velWritePending := TRUE;
+    IF TestForceVelocityWrite THEN
+        velWritePending := TRUE;
+    END_IF
+END_IF
+
+// Track VM parameter changes (only applied when DesiredMode=VM)
+IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (VmAccelRpm <> lastVmAccel) OR (VmDecelRpm <> lastVmDecel) THEN
+    lastVmSpeedMin := VmSpeedMinRpm;
+    lastVmSpeedMax := VmSpeedMaxRpm;
+    lastVmAccel := VmAccelRpm;
+    lastVmDecel := VmDecelRpm;
+    vmCfgPending := TRUE;
+    vmCfgStage := 0;
+END_IF
+
+// Latch one-shot command
+IF (CmdSeq <> CmdAckSeq) AND (NOT faultResetPending) THEN
+    cmdSeqLatched := CmdSeq;
+    IF Cmd = 1 THEN
+        faultResetPending := TRUE;
+    ELSE
+        // unknown command: ack immediately
+        CmdAckSeq := CmdSeq;
+    END_IF
+END_IF
+
+// Drive Modbus master
+mb(Enable := Enable,
+   Channel := Channel,
+   SlaveId := SlaveId,
+   Req := mbReqHold,
+   Func := mbFunc,
+   Addr := mbAddr,
+   Quantity := mbQty,
+   WriteByteCount := mbWbc,
+   WriteData := mbWData);
+IF mb.Busy THEN
+    // Request accepted by Modbus FB
+    mbReqHold := FALSE;
+END_IF
+
+Busy := mb.Busy;
+
+// Update debug frames (latch last non-empty frames)
+IF mb.TxLen > 0 THEN
+    LastTxLen := mb.TxLen;
+    LastTx := mb.TxFrame;
+END_IF
+
+IF mb.RxLen > 0 THEN
+    LastRxLen := mb.RxLen;
+    LastRx := mb.RxFrame;
+END_IF
+
+IF mb.Error THEN
+    CommOk := FALSE;
+    CommErrorCount := CommErrorCount + 1;
+    LastErrorId := mb.ErrorId;
+
+    // Re-arm pending writes on error so we retry.
+    IF op = 11 THEN
+        cfgWritePending := TRUE;
+    ELSIF op = 6 THEN
+        modeWritePending := TRUE;
+    ELSIF op = 8 THEN
+        velWritePending := TRUE;
+    ELSIF op = 25 THEN
+        vmStopPending := TRUE;
+    ELSIF op = 23 THEN
+        vmCfgPending := TRUE;
+    ELSIF op = 24 THEN
+        vmCfgPending := TRUE;
+    END_IF
+
+    op := 0;
+    // stay on the same step when comm is down; allow pending debug writes to still be sent
+END_IF
+
+IF mb.Done THEN
+    CommOk := TRUE;
+
+    CASE op OF
+    10: // ControlMode (I2002-1 / H00B1)
+        ControlMode := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+        IF ControlMode = 0 THEN
+            ControlModeOk := TRUE;
+            cfgDone := TRUE;
+        ELSE
+            ControlModeOk := FALSE;
+            cfgWritePending := TRUE;
+            // Stay in preflight until mode is correct (or AutoSet disabled)
+            IF NOT AutoSetCia402Mode THEN
+                cfgDone := TRUE; // user will handle manually
+            END_IF
+        END_IF
+    11: // Write ControlMode done (read back next)
+        cfgDone := FALSE;
+    1: // StatusWord
+        StatusWord := mb.ReadRegs[0];
+    22: // VM telemetry (I6042..I6044 / H0382..H0384)
+        VmTargetSpeedRpm := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[0]));
+        VmTargetSpeedEffRpm := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[1]));
+        VmActualSpeedRpm := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[2]));
+    12: // DiSignals (I200B-5 / H01E2)
+        DiSignals := mb.ReadRegs[0];
+    18: // DoSignals (I200B-6 / H01E3)
+        DoSignals := mb.ReadRegs[0];
+    19: // Bus voltage & temp (I200B-21/22 / H01F7..H01F8)
+        DcBusVoltage := mb.ReadRegs[0];
+        ModuleTemp := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[1]));
+    13: // DriveInternalState (I200B-1 / H01DE)
+        DriveInternalState := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+    17: // FPGA abs encoder + system status/fault (I200B-23..27 / H01F9..H01FD)
+        AbsEncoderWord := mb.ReadRegs[0];
+        FpgaSystemStatus := mb.ReadRegs[1];
+        FpgaSystemFault := mb.ReadRegs[2];
+        EncoderInternalFault := mb.ReadRegs[3];
+        FaultRecord := mb.ReadRegs[4];
+    14: // ErrorRegister (I1001 / H0000, low byte)
+        ErrorRegister := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+    15: // CurrentAlarm (I1003-0 / H0001, low byte)
+        CurrentAlarm := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+    2: // ModeDisplay (low byte)
+        ModeDisplay := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+    3: // ActualVelocity (2 regs)
+        hi := mb.ReadRegs[0];
+        lo := mb.ReadRegs[1];
+        IF WordSwap32 THEN
+            hi := mb.ReadRegs[1];
+            lo := mb.ReadRegs[0];
+        END_IF
+        uTmp := SHL(UINT_TO_UDINT(hi), 16) OR UINT_TO_UDINT(lo);
+        dw := UDINT_TO_DWORD(uTmp);
+        ActualVelocity := DWORD_TO_DINT(dw);
+    4: // ActualPosition (2 regs)
+        hi := mb.ReadRegs[0];
+        lo := mb.ReadRegs[1];
+        IF WordSwap32 THEN
+            hi := mb.ReadRegs[1];
+            lo := mb.ReadRegs[0];
+        END_IF
+        uTmp := SHL(UINT_TO_UDINT(hi), 16) OR UINT_TO_UDINT(lo);
+        dw := UDINT_TO_DWORD(uTmp);
+        ActualPosition := DWORD_TO_DINT(dw);
+    5: // CurrentFeedback (16-bit signed)
+        CurrentFeedback := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[0]));
+    16: // DI1..DI4 config (I2003-3..10 / H00D5..H00DC), low byte per register
+        Di1Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+        Di1Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[1] AND 16#00FF));
+        Di2Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[2] AND 16#00FF));
+        Di2Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[3] AND 16#00FF));
+        Di3Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[4] AND 16#00FF));
+        Di3Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[5] AND 16#00FF));
+        Di4Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[6] AND 16#00FF));
+        Di4Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[7] AND 16#00FF));
+    20: // DI5..DI8 config (I2003-11..18 / H00DD..H00E4), low byte per register
+        Di5Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+        Di5Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[1] AND 16#00FF));
+        Di6Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[2] AND 16#00FF));
+        Di6Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[3] AND 16#00FF));
+        Di7Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[4] AND 16#00FF));
+        Di7Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[5] AND 16#00FF));
+        Di8Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[6] AND 16#00FF));
+        Di8Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[7] AND 16#00FF));
+    21: // DI9 config (I2003-19..20 / H00E5..H00E6)
+        Di9Func := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[0] AND 16#00FF));
+        Di9Logic := WORD_TO_USINT(UINT_TO_WORD(mb.ReadRegs[1] AND 16#00FF));
+    6: // WriteMode done
+        ;
+    7: // WriteControl done
+        forceCtrlWrite := FALSE;
+    8: // WriteTargetVel done
+        ;
+    25: // VM stop (write H0382=0) done
+        vmStopPending := FALSE;
+    23: // Write VM cfg done
+        IF vmCfgStage = 0 THEN
+            vmCfgStage := 1;
+            vmCfgPending := TRUE;
+        ELSE
+            vmCfgStage := 2;
+            vmCfgPending := FALSE;
+        END_IF
+    24: // Write VM cfg stage 1 done
+        vmCfgStage := 2;
+        vmCfgPending := FALSE;
+    ELSE
+        ;
+    END_CASE
+
+    op := 0;
+    step := step + 1;
+    IF step > 18 THEN
+        step := 0;
+    END_IF
+END_IF
+
+// If drive transitions from "not ready" to "ready/loop active", re-assert control and target speed once.
+IF (driveStatePrev = 0) AND (DriveInternalState <> 0) THEN
+    forceCtrlWrite := TRUE;
+    velWritePending := TRUE;
+END_IF
+driveStatePrev := DriveInternalState;
+
+// Derive CiA402 state (DS402)
+IF (StatusWord AND 16#004F) = 16#0008 THEN
+    Cia402State := 7; // Fault
+ELSIF (StatusWord AND 16#004F) = 16#000F THEN
+    Cia402State := 6; // Fault reaction active
+ELSIF (StatusWord AND 16#006F) = 16#0027 THEN
+    Cia402State := 5; // Operation enabled
+ELSIF (StatusWord AND 16#006F) = 16#0023 THEN
+    Cia402State := 4; // Switched on
+ELSIF (StatusWord AND 16#006F) = 16#0021 THEN
+    Cia402State := 3; // Ready to switch on
+ELSIF (StatusWord AND 16#006F) = 16#0007 THEN
+    Cia402State := 8; // Quick stop active
+ELSIF (StatusWord AND 16#004F) = 16#0040 THEN
+    Cia402State := 2; // Switch on disabled
+ELSIF (StatusWord AND 16#004F) = 16#0000 THEN
+    Cia402State := 1; // Not ready to switch on
+ELSE
+    Cia402State := 0; // Unknown
+END_IF
+
+// Derive DI enable status (based on DI1 settings)
+di1High := (DiSignals AND 16#0001) <> 0;
+di2High := (DiSignals AND 16#0002) <> 0;
+di3High := (DiSignals AND 16#0004) <> 0;
+di4High := (DiSignals AND 16#0008) <> 0;
+di5High := (DiSignals AND 16#0010) <> 0;
+di6High := (DiSignals AND 16#0020) <> 0;
+di7High := (DiSignals AND 16#0040) <> 0;
+di8High := (DiSignals AND 16#0080) <> 0;
+di9High := (DiSignals AND 16#0100) <> 0;
+
+EnableDiIndex := 0;
+IF Di1Func = 1 THEN
+    EnableDiIndex := 1;
+ELSIF Di2Func = 1 THEN
+    EnableDiIndex := 2;
+ELSIF Di3Func = 1 THEN
+    EnableDiIndex := 3;
+ELSIF Di4Func = 1 THEN
+    EnableDiIndex := 4;
+ELSIF Di5Func = 1 THEN
+    EnableDiIndex := 5;
+ELSIF Di6Func = 1 THEN
+    EnableDiIndex := 6;
+ELSIF Di7Func = 1 THEN
+    EnableDiIndex := 7;
+ELSIF Di8Func = 1 THEN
+    EnableDiIndex := 8;
+ELSIF Di9Func = 1 THEN
+    EnableDiIndex := 9;
+END_IF
+EnableDiRequired := EnableDiIndex <> 0;
+
+diSelHigh := FALSE;
+IF EnableDiIndex = 1 THEN
+    diSelHigh := di1High;
+ELSIF EnableDiIndex = 2 THEN
+    diSelHigh := di2High;
+ELSIF EnableDiIndex = 3 THEN
+    diSelHigh := di3High;
+ELSIF EnableDiIndex = 4 THEN
+    diSelHigh := di4High;
+ELSIF EnableDiIndex = 5 THEN
+    diSelHigh := di5High;
+ELSIF EnableDiIndex = 6 THEN
+    diSelHigh := di6High;
+ELSIF EnableDiIndex = 7 THEN
+    diSelHigh := di7High;
+ELSIF EnableDiIndex = 8 THEN
+    diSelHigh := di8High;
+ELSIF EnableDiIndex = 9 THEN
+    diSelHigh := di9High;
+END_IF
+
+IF EnableDiRequired THEN
+    // Logic selection value is stored per DI (0=low active, 1=high active)
+    IF (EnableDiIndex = 1) AND (Di1Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 1) AND (Di1Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 2) AND (Di2Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 2) AND (Di2Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 3) AND (Di3Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 3) AND (Di3Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 4) AND (Di4Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 4) AND (Di4Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 5) AND (Di5Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 5) AND (Di5Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 6) AND (Di6Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 6) AND (Di6Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 7) AND (Di7Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 7) AND (Di7Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 8) AND (Di8Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 8) AND (Di8Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSIF (EnableDiIndex = 9) AND (Di9Logic = 0) THEN
+        EnableDiActive := NOT diSelHigh;
+    ELSIF (EnableDiIndex = 9) AND (Di9Logic = 1) THEN
+        EnableDiActive := diSelHigh;
+    ELSE
+        EnableDiActive := FALSE; // edge-based or unknown mode
+    END_IF
+ELSE
+    EnableDiActive := TRUE;
+END_IF
+EnableDiOk := (NOT EnableDiRequired) OR EnableDiActive;
+
+// Determine desired control word (simple CiA402 sequence)
+desiredCtrl := 0;
+IF faultResetPending THEN
+    desiredCtrl := 16#0080;
+ELSIF PowerEnable THEN
+    // Fault?
+    IF Cia402State = 7 THEN
+        desiredCtrl := 16#0080;
+    // VM mode: follow CiA402 state machine, then use 0x7F once op enabled (aligns with SDK behavior).
+    ELSIF DesiredMode = 2 THEN
+        IF Cia402State = 5 THEN
+            desiredCtrl := 16#007F;
+        ELSIF Cia402State = 4 THEN
+            desiredCtrl := 16#000F;
+        ELSIF Cia402State = 3 THEN
+            desiredCtrl := 16#0007;
+        ELSE
+            // includes Switch on disabled / Not ready / Unknown
+            desiredCtrl := 16#0006;
+        END_IF
+    ELSE
+        // Other modes: standard CiA402 bring-up to operation enabled (0x0F)
+        IF Cia402State = 5 THEN
+            desiredCtrl := 16#000F; // operation enabled
+        ELSIF Cia402State = 4 THEN
+            desiredCtrl := 16#000F; // switch on -> enable operation
+        ELSIF Cia402State = 3 THEN
+            desiredCtrl := 16#0007; // ready -> switch on
+        ELSE
+            desiredCtrl := 16#0006; // shutdown
+        END_IF
+    END_IF
+END_IF
+
+// VM: if the effective target speed doesn't match and we're enabled, re-arm speed write.
+// This makes the interface idempotent (e.g. after drive state changes) without requiring the PC to toggle Enable.
+IF (DesiredMode = 2) AND PowerEnable AND tVmStartDelay.Q AND (Cia402State = 5) AND (NOT velWritePending) THEN
+    iTmp := DINT_TO_INT(TargetVelocity);
+    IF iTmp > INT#6000 THEN
+        iTmp := INT#6000;
+    ELSIF iTmp < INT#-6000 THEN
+        iTmp := INT#-6000;
+    END_IF
+
+    IF VmTargetSpeedEffRpm <> iTmp THEN
+        velWritePending := TRUE;
+    END_IF
+END_IF
+
+// Schedule next Modbus transaction when idle
+IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
+    // Preflight: ensure control mode is CIA402 (I2002-1 / H00B1 = 0) if requested.
+    IF NOT cfgDone THEN
+        IF cfgWritePending AND AutoSetCia402Mode THEN
+            mbFunc := 6;
+            mbAddr := 16#00B1;
+            mbQty := 1;
+            mbWbc := 2;
+            mbWData[0] := 0;
+            mbWData[1] := 0;
+            op := 11; // write control mode
+            mbReqHold := TRUE;
+            cfgWritePending := FALSE;
+            RETURN;
+        ELSE
+            mbFunc := 3;
+            mbAddr := 16#00B1;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 10; // read control mode
+            mbReqHold := TRUE;
+            RETURN;
+        END_IF
+    END_IF
+
+    // VM stop on PowerEnable falling edge: write H0382 = 0 once (before changing controlword)
+    IF vmStopPending AND (DesiredMode = 2) THEN
+        mbFunc := 6;
+        mbAddr := 16#0382;
+        mbQty := 1;
+        mbWbc := 2;
+        mbWData[0] := 0;
+        mbWData[1] := 0;
+        op := 25;
+        mbReqHold := TRUE;
+        RETURN;
+    END_IF
+
+    // ControlWord has priority over speed writes (improves repeatability on re-start)
+    IF (ControlWord <> desiredCtrl) OR forceCtrlWrite THEN
+        ControlWord := desiredCtrl;
+        mbFunc := 6;
+        mbAddr := 16#0380;
+        mbQty := 1;
+        mbWbc := 2;
+        mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(ControlWord), 8));
+        mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(ControlWord) AND 16#00FF);
+        op := 7;
+        mbReqHold := TRUE;
+        // clear fault reset after one write
+        IF faultResetPending THEN
+            faultResetPending := FALSE;
+            CmdAckSeq := cmdSeqLatched;
+        END_IF
+        RETURN;
+    END_IF
+
+    // Debug: force a 60FF write when requested, even without OP enabled / without prior successful reads.
+    IF velWritePending THEN
+        IF DesiredMode = 2 THEN
+            // Only send VM target speed when PowerEnable is asserted and after a short start delay.
+            // Important: do NOT block the rest of the polling/state-machine when preconditions are not met yet.
+            // Otherwise, writing TargetVelocity "too early" can starve StatusWord reads and prevent reaching OP enabled.
+            IF (NOT PowerEnable) OR (NOT tVmStartDelay.Q) OR (Cia402State <> 5) THEN
+                // keep pending; try again later
+            ELSE
+
+            // VM mode uses I6042 (H0382) "VM模式的目标速度", 16-bit signed rpm.
+            iTmp := DINT_TO_INT(TargetVelocity);
+            // Clamp to Modbus.db limits (-6000..6000 rpm) to avoid overflow/undefined behavior.
+            IF iTmp > INT#6000 THEN
+                iTmp := INT#6000;
+            ELSIF iTmp < INT#-6000 THEN
+                iTmp := INT#-6000;
+            END_IF
+            mbFunc := 6;
+            mbAddr := 16#0382;
+            mbQty := 1;
+            mbWbc := 2;
+            mbWData[0] := WORD_TO_USINT(SHR(INT_TO_WORD(iTmp), 8));
+            mbWData[1] := WORD_TO_USINT(INT_TO_WORD(iTmp) AND 16#00FF);
+            op := 8;
+            mbReqHold := TRUE;
+            velWritePending := FALSE;
+            RETURN;
+            END_IF
+        ELSE
+            // CSV (and others): use 60FF (H0448) 32-bit once OP enabled, unless forced.
+            // Same as VM: never block the rest of the polling/state-machine when preconditions are not met yet.
+            IF (NOT TestForceVelocityWrite) AND (NOT (PowerEnable AND (Cia402State = 5))) THEN
+                // keep pending until drive is enabled
+            ELSE
+
+            dw := DINT_TO_DWORD(TargetVelocity);
+            uTmp := DWORD_TO_UDINT(dw);
+            hi := UDINT_TO_UINT(SHR(uTmp, 16));
+            lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+
+            mbFunc := 16;
+            mbAddr := 16#0448;
+            mbQty := 2;
+            mbWbc := 4;
+
+            IF WordSwap32 THEN
+                // low word first
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+            ELSE
+                // high word first
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+            END_IF
+
+            op := 8;
+            mbReqHold := TRUE;
+            velWritePending := FALSE;
+            RETURN;
+            END_IF
+        END_IF
+    END_IF
+
+    CASE step OF
+    0: // Read StatusWord (6041 = H0381)
+        mbFunc := 3;
+        mbAddr := 16#0381;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 1;
+        mbReqHold := TRUE;
+
+    1: // Read DiSignals (I200B-5 = H01E2)
+        mbFunc := 3;
+        mbAddr := 16#01E2;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 12;
+        mbReqHold := TRUE;
+
+    2: // Read DoSignals (I200B-6 = H01E3)
+        mbFunc := 3;
+        mbAddr := 16#01E3;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 18;
+        mbReqHold := TRUE;
+
+    3: // Read Bus voltage & temp (I200B-21/22 = H01F7..H01F8)
+        mbFunc := 3;
+        mbAddr := 16#01F7;
+        mbQty := 2;
+        mbWbc := 0;
+        op := 19;
+        mbReqHold := TRUE;
+
+    4: // Read DriveInternalState (I200B-1 = H01DE)
+        mbFunc := 3;
+        mbAddr := 16#01DE;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 13;
+        mbReqHold := TRUE;
+
+    5: // Read FPGA absolute encoder & system status/fault (I200B-23..27 = H01F9..H01FD)
+        mbFunc := 3;
+        mbAddr := 16#01F9;
+        mbQty := 5;
+        mbWbc := 0;
+        op := 17;
+        mbReqHold := TRUE;
+
+    6: // Read ErrorRegister (I1001 = H0000)
+        mbFunc := 3;
+        mbAddr := 16#0000;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 14;
+        mbReqHold := TRUE;
+
+    7: // Read CurrentAlarm (I1003-0 = H0001)
+        mbFunc := 3;
+        mbAddr := 16#0001;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 15;
+        mbReqHold := TRUE;
+
+    8: // Read ModeDisplay (6061 = H03C3)
+        mbFunc := 3;
+        mbAddr := 16#03C3;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 2;
+        mbReqHold := TRUE;
+
+    9: // Read ActualVelocity (606C = H03D5, 2 regs)
+        mbFunc := 3;
+        mbAddr := 16#03D5;
+        mbQty := 2;
+        mbWbc := 0;
+        op := 3;
+        mbReqHold := TRUE;
+
+    10: // Read ActualPosition (6064 = H03C8, 2 regs)
+        mbFunc := 3;
+        mbAddr := 16#03C8;
+        mbQty := 2;
+        mbWbc := 0;
+        op := 4;
+        mbReqHold := TRUE;
+
+    11: // Read CurrentFeedback (6078 = H03E4)
+        mbFunc := 3;
+        mbAddr := 16#03E4;
+        mbQty := 1;
+        mbWbc := 0;
+        op := 5;
+        mbReqHold := TRUE;
+
+    12: // Read DI1..DI4 config (I2003-3..10 = H00D5..H00DC)
+        mbFunc := 3;
+        mbAddr := 16#00D5;
+        mbQty := 8;
+        mbWbc := 0;
+        op := 16;
+        mbReqHold := TRUE;
+
+    13: // Read DI5..DI8 config (I2003-11..18 = H00DD..H00E4)
+        mbFunc := 3;
+        mbAddr := 16#00DD;
+        mbQty := 8;
+        mbWbc := 0;
+        op := 20;
+        mbReqHold := TRUE;
+
+    14: // Read DI9 config (I2003-19..20 = H00E5..H00E6)
+        mbFunc := 3;
+        mbAddr := 16#00E5;
+        mbQty := 2;
+        mbWbc := 0;
+        op := 21;
+        mbReqHold := TRUE;
+
+    15: // VM config writes (only in VM mode)
+        IF vmCfgPending AND (DesiredMode = 2) THEN
+            IF vmCfgStage = 0 THEN
+                // Stage 0: write VM speed min/max (H0385..H0388), 4 regs => 8 bytes (fits 22-byte EL6022 limit)
+                mbFunc := 16;
+                mbAddr := 16#0385;
+                mbQty := 4;
+                mbWbc := 8;
+
+                // Min (UDINT)
+                uTmp := VmSpeedMinRpm;
+                hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+
+                // Max (UDINT)
+                uTmp := VmSpeedMaxRpm;
+                hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbWData[4] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[5] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+                mbWData[6] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[7] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+
+                op := 23;
+                mbReqHold := TRUE;
+                vmCfgPending := FALSE;
+                RETURN;
+            ELSE
+                // Stage 1: write VM accel/decel + time (H0389..H038E), 6 regs => 12 bytes (fits)
+                mbFunc := 16;
+                mbAddr := 16#0389;
+                mbQty := 6;
+                mbWbc := 12;
+
+                // Accel (UDINT)
+                uTmp := VmAccelRpm;
+                hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+
+                // Accel time = 1s
+                mbWData[4] := 0;
+                mbWData[5] := 1;
+
+                // Decel (UDINT)
+                uTmp := VmDecelRpm;
+                hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbWData[6] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[7] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+                mbWData[8] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[9] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+
+                // Decel time = 1s
+                mbWData[10] := 0;
+                mbWData[11] := 1;
+
+                op := 24;
+                mbReqHold := TRUE;
+                vmCfgPending := FALSE;
+                RETURN;
+            END_IF
+        END_IF
+        step := 16;
+
+    16: // Write DesiredMode (6060 = H03C2) if needed
+        IF modeWritePending AND ((DesiredMode = 2) OR (DesiredMode = 9)) THEN
+            mbFunc := 6;
+            mbAddr := 16#03C2;
+            mbQty := 1;
+            mbWbc := 2;
+            mbWData[0] := 0;
+            mbWData[1] := DesiredMode;
+            op := 6;
+            mbReqHold := TRUE;
+            modeWritePending := FALSE;
+            RETURN;
+        END_IF
+        step := 17;
+
+    17: // Read VM telemetry (H0382..H0384), useful even when not ready
+        mbFunc := 3;
+        mbAddr := 16#0382;
+        mbQty := 3;
+        mbWbc := 0;
+        op := 22;
+        mbReqHold := TRUE;
+
+    18: // (no-op; controlword handled in priority section above)
+        step := 0;
+
+    // Note: target speed writes are handled via velWritePending (H0382 for VM, 60FF for CSV).
+    ELSE
+        step := 0;
+    END_CASE
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_NimServo">
+      <LineId Id="1" Count="279" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

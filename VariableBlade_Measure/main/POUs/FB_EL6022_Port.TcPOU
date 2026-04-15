@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_EL6022_Port" Id="{83018322-4951-493a-b32e-d4e798267c4d}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_EL6022_Port
+VAR_INPUT
+    Enable : BOOL;
+    Channel : USINT; // 1 or 2
+
+    TxStart : BOOL;
+    TxLen : USINT; // 0..22
+    TxData : ARRAY [0..21] OF USINT;
+END_VAR
+VAR_OUTPUT
+    Ready : BOOL;
+
+    TxBusy : BOOL;
+    TxDone : BOOL;
+
+    RxNew : BOOL;
+    RxLen : USINT;
+    RxData : ARRAY [0..21] OF USINT;
+
+    LastStatus : WORD;
+    LastCtrl : WORD;
+END_VAR
+VAR
+    txStartPrev : BOOL;
+    rxLatched : BOOL;
+
+    status : WORD;
+    ctrl : WORD;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[TxDone := FALSE;
+RxNew := FALSE;
+
+IF NOT Enable THEN
+    Ready := FALSE;
+    TxBusy := FALSE;
+    rxLatched := FALSE;
+    txStartPrev := TxStart;
+    RETURN;
+END_IF
+
+// Select channel
+IF Channel = 2 THEN
+    status := GVL_EL6022_IO.EL6022_Ch2_Status;
+    ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl;
+ELSE
+    status := GVL_EL6022_IO.EL6022_Ch1_Status;
+    ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl;
+END_IF
+
+// One-time init handshake (Ctrl bit2 / Status bit2)
+IF NOT Ready THEN
+    ctrl := ctrl OR 16#0004;
+    IF (status AND 16#0004) <> 0 THEN
+        ctrl := ctrl AND 16#FFFB;
+        Ready := TRUE;
+    END_IF
+END_IF
+
+// TX edge detect
+IF (TxStart AND NOT txStartPrev) AND Ready AND (NOT TxBusy) THEN
+    TxBusy := TRUE;
+
+    IF Channel = 2 THEN
+        GVL_EL6022_IO.EL6022_Ch2_DataOut := TxData;
+        ctrl := (ctrl AND 16#00FF) OR 16#0001 OR SHL(USINT_TO_WORD(TxLen), 8);
+    ELSE
+        GVL_EL6022_IO.EL6022_Ch1_DataOut := TxData;
+        ctrl := (ctrl AND 16#00FF) OR 16#0001 OR SHL(USINT_TO_WORD(TxLen), 8);
+    END_IF
+END_IF
+txStartPrev := TxStart;
+
+// TX accepted (Status bit0)
+IF TxBusy THEN
+    IF (status AND 16#0001) <> 0 THEN
+        ctrl := ctrl AND 16#FFFE; // clear TxReq (bit0)
+        TxBusy := FALSE;
+        TxDone := TRUE;
+    END_IF
+END_IF
+
+// RX handling (Status bit1), high byte = input length
+IF (status AND 16#0002) <> 0 THEN
+    RxLen := WORD_TO_USINT(SHR(status, 8));
+    IF NOT rxLatched THEN
+        IF Channel = 2 THEN
+            RxData := GVL_EL6022_IO.EL6022_Ch2_DataIn;
+        ELSE
+            RxData := GVL_EL6022_IO.EL6022_Ch1_DataIn;
+        END_IF
+        RxNew := TRUE;
+        rxLatched := TRUE;
+    END_IF
+
+    ctrl := ctrl OR 16#0002; // RxAck (bit1)
+ELSE
+    rxLatched := FALSE;
+    ctrl := ctrl AND 16#FFFD; // clear RxAck
+END_IF
+
+// Write back ctrl to selected channel
+IF Channel = 2 THEN
+    GVL_EL6022_IO.EL6022_Ch2_Ctrl := ctrl;
+ELSE
+    GVL_EL6022_IO.EL6022_Ch1_Ctrl := ctrl;
+END_IF
+
+LastStatus := status;
+LastCtrl := ctrl;
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_EL6022_Port">
+      <LineId Id="1" Count="98" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
+

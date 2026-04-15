@@ -94,6 +94,63 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "read-i32", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-i32 <SYMBOL>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        int value = plc.ReadSymbol<int>(symbol);
+                        Console.WriteLine(value.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "read-u8", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-u8 <SYMBOL>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        byte value = plc.ReadSymbol<byte>(symbol);
+                        Console.WriteLine(value.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "read-bool", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-bool <SYMBOL>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        bool value = plc.ReadSymbol<bool>(symbol);
+                        Console.WriteLine(value ? "true" : "false");
+                    }
+
+                    return 0;
+                }
+
                 if (string.Equals(command, "read-i16", StringComparison.OrdinalIgnoreCase))
                 {
                     if (index + 1 >= args.Length)
@@ -113,6 +170,48 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "read-u16", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 1 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-u16 <SYMBOL>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        ushort value = plc.ReadSymbol<ushort>(symbol);
+                        Console.WriteLine(value.ToString(CultureInfo.InvariantCulture));
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "read-bytes", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: read-bytes <SYMBOL> <LEN>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    int len = int.Parse(args[index + 2], CultureInfo.InvariantCulture);
+                    if (len < 0) len = 0;
+                    if (len > 4096) len = 4096;
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        byte[] data = plc.ReadBytes(symbol, len);
+                        Console.WriteLine(ToHex(data, data.Length));
+                    }
+
+                    return 0;
+                }
+
                 if (string.Equals(command, "write-u32", StringComparison.OrdinalIgnoreCase))
                 {
                     if (index + 2 >= args.Length)
@@ -123,6 +222,139 @@ namespace PcHostConsole
 
                     string symbol = args[index + 1];
                     uint value = uint.Parse(args[index + 2], CultureInfo.InvariantCulture);
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-i32", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-i32 <SYMBOL> <VALUE>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    int value = int.Parse(args[index + 2], CultureInfo.InvariantCulture);
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-bool", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-bool <SYMBOL> <true|false|1|0>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    string raw = args[index + 2];
+                    bool value;
+                    if (string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = true;
+                    }
+                    else if (string.Equals(raw, "0", StringComparison.OrdinalIgnoreCase))
+                    {
+                        value = false;
+                    }
+                    else
+                    {
+                        value = bool.Parse(raw);
+                    }
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-u8", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-u8 <SYMBOL> <VALUE>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    byte value = byte.Parse(args[index + 2], CultureInfo.InvariantCulture);
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-i8", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-i8 <SYMBOL> <VALUE>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    sbyte value = sbyte.Parse(args[index + 2], CultureInfo.InvariantCulture);
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-u16", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-u16 <SYMBOL> <VALUE>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    ushort value = ushort.Parse(args[index + 2], CultureInfo.InvariantCulture);
+
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+                        plc.WriteSymbol(symbol, value);
+                    }
+
+                    return 0;
+                }
+
+                if (string.Equals(command, "write-i16", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (index + 2 >= args.Length)
+                    {
+                        Console.Error.WriteLine("Usage: write-i16 <SYMBOL> <VALUE>");
+                        return 2;
+                    }
+
+                    string symbol = args[index + 1];
+                    short value = short.Parse(args[index + 2], CultureInfo.InvariantCulture);
 
                     using (var plc = new AdsPlcClient())
                     {
@@ -378,6 +610,7 @@ namespace PcHostConsole
                     using (var plc = new AdsPlcClient())
                     {
                         plc.Connect(settings);
+                        plc.WriteSymbol("GVL_Rs485Demo.Enable", true);
 
                         // Prepare TX
                         plc.WriteSymbol("GVL_Rs485Demo.TxUseCh2", txCh == 2);
@@ -510,8 +743,19 @@ namespace PcHostConsole
             Console.WriteLine("Commands:");
             Console.WriteLine("  connect");
             Console.WriteLine("  read-u32 <SYMBOL>");
+            Console.WriteLine("  read-i32 <SYMBOL>");
+            Console.WriteLine("  read-u8 <SYMBOL>");
+            Console.WriteLine("  read-bool <SYMBOL>");
             Console.WriteLine("  read-i16 <SYMBOL>");
+            Console.WriteLine("  read-u16 <SYMBOL>");
+            Console.WriteLine("  read-bytes <SYMBOL> <LEN>");
             Console.WriteLine("  write-u32 <SYMBOL> <VALUE>");
+            Console.WriteLine("  write-i32 <SYMBOL> <VALUE>");
+            Console.WriteLine("  write-bool <SYMBOL> <true|false|1|0>");
+            Console.WriteLine("  write-u8 <SYMBOL> <VALUE>");
+            Console.WriteLine("  write-i8 <SYMBOL> <VALUE>");
+            Console.WriteLine("  write-u16 <SYMBOL> <VALUE>");
+            Console.WriteLine("  write-i16 <SYMBOL> <VALUE>");
             Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
             Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");

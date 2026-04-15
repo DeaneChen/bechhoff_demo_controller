@@ -5,18 +5,96 @@
 VAR
     initCh1Done : BOOL;
     initCh2Done : BOOL;
+    fbNimServo : FB_NimServo;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[GVL_PcDemo.MainCycleCounter := GVL_PcDemo.MainCycleCounter + 1;
 GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy := GVL_PcDemo.EL3742_Ch2_Sample0_Raw;
 
-// --- EL6022 RS-485 demo loopback (Ch1 <-> Ch2) ---
+// Keep EL6022 debug always updated (used by PcHostConsole el6022-dump)
 GVL_Rs485Demo.Debug_Ch1_Status := GVL_EL6022_IO.EL6022_Ch1_Status;
 GVL_Rs485Demo.Debug_Ch2_Status := GVL_EL6022_IO.EL6022_Ch2_Status;
 GVL_Rs485Demo.Debug_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl;
 GVL_Rs485Demo.Debug_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl;
 
+// --- NiMotion servo (Modbus RTU over EL6022 / RS-485) ---
+fbNimServo(
+    Enable := GVL_NimServo.Enable,
+    Channel := GVL_NimServo.Channel,
+    SlaveId := GVL_NimServo.SlaveId,
+    AutoSetCia402Mode := GVL_NimServo.AutoSetCia402Mode,
+    DesiredMode := GVL_NimServo.DesiredMode,
+    PowerEnable := GVL_NimServo.PowerEnable,
+    TargetVelocity := GVL_NimServo.TargetVelocity,
+    WordSwap32 := GVL_NimServo.WordSwap32,
+    TestForceVelocityWrite := GVL_NimServo.TestForceVelocityWrite,
+    VmSpeedMinRpm := GVL_NimServo.VmSpeedMinRpm,
+    VmSpeedMaxRpm := GVL_NimServo.VmSpeedMaxRpm,
+    VmAccelRpm := GVL_NimServo.VmAccelRpm,
+    VmDecelRpm := GVL_NimServo.VmDecelRpm,
+    CmdSeq := GVL_NimServo.CmdSeq,
+    Cmd := GVL_NimServo.Cmd
+);
+
+GVL_NimServo.CmdAckSeq := fbNimServo.CmdAckSeq;
+GVL_NimServo.Busy := fbNimServo.Busy;
+GVL_NimServo.CommOk := fbNimServo.CommOk;
+GVL_NimServo.CommErrorCount := fbNimServo.CommErrorCount;
+GVL_NimServo.LastErrorId := fbNimServo.LastErrorId;
+GVL_NimServo.ControlMode := fbNimServo.ControlMode;
+GVL_NimServo.ControlModeOk := fbNimServo.ControlModeOk;
+GVL_NimServo.StatusWord := fbNimServo.StatusWord;
+GVL_NimServo.ControlWord := fbNimServo.ControlWord;
+GVL_NimServo.Cia402State := fbNimServo.Cia402State;
+GVL_NimServo.ErrorRegister := fbNimServo.ErrorRegister;
+GVL_NimServo.CurrentAlarm := fbNimServo.CurrentAlarm;
+GVL_NimServo.DiSignals := fbNimServo.DiSignals;
+GVL_NimServo.DoSignals := fbNimServo.DoSignals;
+GVL_NimServo.DcBusVoltage := fbNimServo.DcBusVoltage;
+GVL_NimServo.ModuleTemp := fbNimServo.ModuleTemp;
+GVL_NimServo.Di1Func := fbNimServo.Di1Func;
+GVL_NimServo.Di1Logic := fbNimServo.Di1Logic;
+GVL_NimServo.Di2Func := fbNimServo.Di2Func;
+GVL_NimServo.Di2Logic := fbNimServo.Di2Logic;
+GVL_NimServo.Di3Func := fbNimServo.Di3Func;
+GVL_NimServo.Di3Logic := fbNimServo.Di3Logic;
+GVL_NimServo.Di4Func := fbNimServo.Di4Func;
+GVL_NimServo.Di4Logic := fbNimServo.Di4Logic;
+GVL_NimServo.Di5Func := fbNimServo.Di5Func;
+GVL_NimServo.Di5Logic := fbNimServo.Di5Logic;
+GVL_NimServo.Di6Func := fbNimServo.Di6Func;
+GVL_NimServo.Di6Logic := fbNimServo.Di6Logic;
+GVL_NimServo.Di7Func := fbNimServo.Di7Func;
+GVL_NimServo.Di7Logic := fbNimServo.Di7Logic;
+GVL_NimServo.Di8Func := fbNimServo.Di8Func;
+GVL_NimServo.Di8Logic := fbNimServo.Di8Logic;
+GVL_NimServo.Di9Func := fbNimServo.Di9Func;
+GVL_NimServo.Di9Logic := fbNimServo.Di9Logic;
+GVL_NimServo.EnableDiIndex := fbNimServo.EnableDiIndex;
+GVL_NimServo.EnableDiRequired := fbNimServo.EnableDiRequired;
+GVL_NimServo.EnableDiActive := fbNimServo.EnableDiActive;
+GVL_NimServo.EnableDiOk := fbNimServo.EnableDiOk;
+GVL_NimServo.DriveInternalState := fbNimServo.DriveInternalState;
+GVL_NimServo.FpgaSystemStatus := fbNimServo.FpgaSystemStatus;
+GVL_NimServo.FpgaSystemFault := fbNimServo.FpgaSystemFault;
+GVL_NimServo.EncoderInternalFault := fbNimServo.EncoderInternalFault;
+GVL_NimServo.FaultRecord := fbNimServo.FaultRecord;
+GVL_NimServo.AbsEncoderWord := fbNimServo.AbsEncoderWord;
+GVL_NimServo.ModeDisplay := fbNimServo.ModeDisplay;
+GVL_NimServo.ActualVelocity := fbNimServo.ActualVelocity;
+GVL_NimServo.ActualPosition := fbNimServo.ActualPosition;
+GVL_NimServo.CurrentFeedback := fbNimServo.CurrentFeedback;
+GVL_NimServo.VmTargetSpeedRpm := fbNimServo.VmTargetSpeedRpm;
+GVL_NimServo.VmTargetSpeedEffRpm := fbNimServo.VmTargetSpeedEffRpm;
+GVL_NimServo.VmActualSpeedRpm := fbNimServo.VmActualSpeedRpm;
+GVL_NimServo.LastTxLen := fbNimServo.LastTxLen;
+GVL_NimServo.LastTx := fbNimServo.LastTx;
+GVL_NimServo.LastRxLen := fbNimServo.LastRxLen;
+GVL_NimServo.LastRx := fbNimServo.LastRx;
+
+IF (NOT GVL_NimServo.Enable) AND GVL_Rs485Demo.Enable THEN
+// --- EL6022 RS-485 demo loopback (Ch1 <-> Ch2) ---
 // One-time init handshake (Ctrl bit2 / Status bit2)
 IF NOT initCh1Done THEN
     GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl OR 16#0004;
@@ -88,6 +166,7 @@ ELSE
     // Drop RxAck bits when no receive request pending
     GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#FFFD;
     GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#FFFD;
+END_IF
 END_IF
 ]]></ST>
     </Implementation>

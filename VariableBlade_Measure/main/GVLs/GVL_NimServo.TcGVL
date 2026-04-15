@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_NimServo" Id="{f013c925-374c-44e2-9db4-95cf2ab0a216}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      NiMotion servo host interface (Modbus RTU over EL6022 / RS-485).
+
+      Notes:
+      - PLC implements Modbus + servo control. PC only uses ADS to write macro-level commands and read telemetry.
+      - Channel selects EL6022 channel 1/2.
+      - WordSwap32 can be used to adapt 32-bit register word order if needed.
+    *)
+
+    Enable : BOOL;
+    Channel : USINT := 1; // 1 or 2
+    SlaveId : USINT := 1; // Modbus address 1..247
+
+    AutoSetCia402Mode : BOOL := TRUE; // Write I2002-1 (H00B1) to 0 if needed
+
+    DesiredMode : USINT := 2; // 2=VM, 9=CSV
+    PowerEnable : BOOL;
+    TargetVelocity : DINT; // Raw target velocity (unit depends on drive configuration)
+    WordSwap32 : BOOL;
+    TestForceVelocityWrite : BOOL; // Debug: send 60FF write even without successful comms / OP enabled
+
+    // VM mode parameters (from Modbus.db)
+    VmSpeedMinRpm : UDINT := 0;     // I6046-1 (H0385), 32-bit
+    VmSpeedMaxRpm : UDINT := 500;   // I6046-2 (H0387), 32-bit
+    VmAccelRpm : UDINT := 200;      // I6048-1 (H0389), 32-bit
+    VmDecelRpm : UDINT := 200;      // I6049-1 (H038C), 32-bit
+
+    CmdSeq : UDINT; // PC increments to request a one-shot command
+    Cmd : USINT;    // 0=None, 1=FaultReset
+
+    CmdAckSeq : UDINT;
+    Busy : BOOL;
+    CommOk : BOOL;
+    CommErrorCount : UDINT;
+    LastErrorId : UDINT;
+
+    // Telemetry (raw registers)
+    ControlMode : USINT;      // I2002-1 (H00B1): 0=CIA402
+    ControlModeOk : BOOL;
+    StatusWord : UINT;         // 6041 (H0381)
+    ControlWord : UINT;        // last written 6040 (H0380)
+
+    // Diagnostics / preconditions
+    Cia402State : USINT;       // 0=Unknown, 1=NotReady, 2=SwitchOnDisabled, 3=Ready, 4=SwitchedOn, 5=OpEnabled, 6=FaultReaction, 7=Fault, 8=QuickStop
+    ErrorRegister : USINT;     // I1001 (H0000) low byte
+    CurrentAlarm : USINT;      // I1003-0 (H0001) low byte
+
+    DiSignals : UINT;          // I200B-5 (H01E2), raw DI monitor bits
+    DoSignals : UINT;          // I200B-6 (H01E3), raw DO monitor bits
+    DcBusVoltage : UINT;       // I200B-21 (H01F7), bus voltage (unit per drive)
+    ModuleTemp : INT;          // I200B-22 (H01F8), module temperature (unit per drive)
+
+    Di1Func : USINT;           // I2003-3 (H00D5) low byte
+    Di1Logic : USINT;          // I2003-4 (H00D6) low byte
+    Di2Func : USINT;           // I2003-5 (H00D7) low byte
+    Di2Logic : USINT;          // I2003-6 (H00D8) low byte
+    Di3Func : USINT;           // I2003-7 (H00D9) low byte
+    Di3Logic : USINT;          // I2003-8 (H00DA) low byte
+    Di4Func : USINT;           // I2003-9 (H00DB) low byte
+    Di4Logic : USINT;          // I2003-10 (H00DC) low byte
+    Di5Func : USINT;           // I2003-11 (H00DD) low byte
+    Di5Logic : USINT;          // I2003-12 (H00DE) low byte
+    Di6Func : USINT;           // I2003-13 (H00DF) low byte
+    Di6Logic : USINT;          // I2003-14 (H00E0) low byte
+    Di7Func : USINT;           // I2003-15 (H00E1) low byte
+    Di7Logic : USINT;          // I2003-16 (H00E2) low byte
+    Di8Func : USINT;           // I2003-17 (H00E3) low byte
+    Di8Logic : USINT;          // I2003-18 (H00E4) low byte
+    Di9Func : USINT;           // I2003-19 (H00E5) low byte
+    Di9Logic : USINT;          // I2003-20 (H00E6) low byte
+
+    EnableDiIndex : USINT;     // 0=None, 1..9 = which DI is "Enable(1)"
+    EnableDiRequired : BOOL;   // EnableDiIndex <> 0
+    EnableDiActive : BOOL;     // Computed from DiSignals + selected DI logic when required
+    EnableDiOk : BOOL;         // NOT EnableDiRequired OR EnableDiActive
+
+    // Drive status (vendor-specific)
+    DriveInternalState : USINT; // I200B-1 (H01DE), see Modbus.db selects (0=未准备好, 1=准备好, 8=速度闭环控制...)
+    FpgaSystemStatus : UINT;    // I200B-24 (H01FA)
+    FpgaSystemFault : UINT;     // I200B-25 (H01FB)
+    EncoderInternalFault : UINT; // I200B-26 (H01FC) 编码内部故障信息
+    FaultRecord : UINT;         // I200B-27 (H01FD)
+    AbsEncoderWord : UINT;      // I200B-23 (H01F9) FPGA给出绝对编码
+
+    ModeDisplay : USINT;       // 6061 (H03C3) low byte
+    ActualVelocity : DINT;     // 606C (H03D5)
+    ActualPosition : DINT;     // 6064 (H03C8)
+    CurrentFeedback : INT;     // 6078 (H03E4)
+
+    // VM mode telemetry (from Modbus.db)
+    VmTargetSpeedRpm : INT;    // I6042 (H0382) 16-bit
+    VmTargetSpeedEffRpm : INT; // I6043 (H0383) 16-bit (effective)
+    VmActualSpeedRpm : INT;    // I6044 (H0384) 16-bit
+
+    // Debug frames
+    LastTxLen : USINT;
+    LastTx : ARRAY [0..21] OF USINT;
+    LastRxLen : USINT;
+    LastRx : ARRAY [0..21] OF USINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -8,6 +8,8 @@
       PLC sends via selected channel and exposes last Rx* from either channel.
     *)
 
+    Enable : BOOL; // Enable demo logic in MAIN (avoid conflicts with real device drivers)
+
     TxSeq : UDINT;
     TxUseCh2 : BOOL; // FALSE => TX on Ch1, TRUE => TX on Ch2
     TxLen : USINT;

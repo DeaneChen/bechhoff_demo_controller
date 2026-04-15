@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="F_ModbusCrc16" Id="{788c4d34-38e2-42a9-a9da-362403ee6481}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_ModbusCrc16 : WORD
+VAR_INPUT
+    Data : ARRAY [0..21] OF USINT;
+    Len : USINT;
+END_VAR
+VAR
+    crc : WORD;
+    i : USINT;
+    j : USINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[crc := 16#FFFF;
+
+IF Len = 0 THEN
+    F_ModbusCrc16 := crc;
+    RETURN;
+END_IF
+
+FOR i := 0 TO Len - 1 DO
+    crc := crc XOR USINT_TO_WORD(Data[i]);
+
+    FOR j := 0 TO 7 DO
+        IF (crc AND 16#0001) <> 0 THEN
+            crc := SHR(crc, 1);
+            crc := crc XOR 16#A001;
+        ELSE
+            crc := SHR(crc, 1);
+        END_IF
+    END_FOR
+END_FOR
+
+F_ModbusCrc16 := crc;
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_ModbusCrc16">
+      <LineId Id="1" Count="35" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
+
