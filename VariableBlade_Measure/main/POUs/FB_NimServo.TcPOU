@@ -660,21 +660,6 @@ ELSIF PowerEnable THEN
     END_IF
 END_IF
 
-// VM: if the effective target speed doesn't match and we're enabled, re-arm speed write.
-// This makes the interface idempotent (e.g. after drive state changes) without requiring the PC to toggle Enable.
-IF (DesiredMode = 2) AND PowerEnable AND tVmStartDelay.Q AND (Cia402State = 5) AND (NOT velWritePending) THEN
-    iTmp := DINT_TO_INT(TargetVelocity);
-    IF iTmp > INT#6000 THEN
-        iTmp := INT#6000;
-    ELSIF iTmp < INT#-6000 THEN
-        iTmp := INT#-6000;
-    END_IF
-
-    IF VmTargetSpeedEffRpm <> iTmp THEN
-        velWritePending := TRUE;
-    END_IF
-END_IF
-
 // Schedule next Modbus transaction when idle
 IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
     // Preflight: ensure control mode is CIA402 (I2002-1 / H00B1 = 0) if requested.

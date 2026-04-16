@@ -1,0 +1,123 @@
+{
+  "format": 1,
+  "restore": {
+    "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHostGUI\\PcHostGUI.csproj": {}
+  },
+  "projects": {
+    "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\PcHost.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\PcHost.Core.csproj",
+        "projectName": "PcHost.Core",
+        "projectPath": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\PcHost.Core.csproj",
+        "packagesPath": "C:\\Users\\Deane Chen\\.nuget\\packages\\",
+        "outputPath": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Deane Chen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netstandard2.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netstandard2.0": {
+            "targetAlias": "netstandard2.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netstandard2.0": {
+          "targetAlias": "netstandard2.0",
+          "dependencies": {
+            "Beckhoff.TwinCAT.Ads": {
+              "target": "Package",
+              "version": "[7.0.172, )"
+            },
+            "NETStandard.Library": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.410\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHostGUI\\PcHostGUI.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHostGUI\\PcHostGUI.csproj",
+        "projectName": "PcHostGUI",
+        "projectPath": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHostGUI\\PcHostGUI.csproj",
+        "packagesPath": "C:\\Users\\Deane Chen\\.nuget\\packages\\",
+        "outputPath": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHostGUI\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Deane Chen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net472"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net472": {
+            "targetAlias": "net472",
+            "projectReferences": {
+              "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\PcHost.Core.csproj": {
+                "projectPath": "E:\\Career\\Project_PLC\\VariableBlade_Measure\\PcHost\\PcHost\\PcHost.Core\\PcHost.Core.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net472": {
+          "targetAlias": "net472",
+          "dependencies": {
+            "ModernWpfUI": {
+              "target": "Package",
+              "version": "[0.9.7-preview.2, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.410\\RuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win7-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}

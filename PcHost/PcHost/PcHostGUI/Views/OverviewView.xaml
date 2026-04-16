@@ -1,0 +1,81 @@
+﻿<UserControl x:Class="PcHostGUI.Views.OverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Overview" FontSize="22" FontWeight="SemiBold" />
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="3*" />
+                </Grid.ColumnDefinitions>
+
+                <Border CornerRadius="8" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Motor (NiMotion)" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="Quick actions" Margin="0,10,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+
+                        <WrapPanel Margin="0,10,0,0">
+                            <TextBlock Text="Target RPM" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Width="120" Text="{Binding NimServo.TargetVelocity, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" />
+                            <Button Content="Start VM" Command="{Binding NimServo.StartVmCommand}" Margin="10,0,0,0" />
+                            <Button Content="Stop" Command="{Binding NimServo.StopCommand}" Margin="8,0,0,0" />
+                            <Button Content="Reset" Command="{Binding NimServo.ResetCommand}" Margin="8,0,0,0" />
+                        </WrapPanel>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="CommOk" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding NimServo.CommOk}" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="CiA402" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding NimServo.Cia402State}" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="VM Actual RPM" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding NimServo.VmActualRpm}" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="CommErrorCount" Margin="0,0,12,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding NimServo.CommErrorCount}" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" CornerRadius="8" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Padding="14">
+                    <StackPanel>
+                        <TextBlock Text="Sensors" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="Placeholders for upcoming devices" Margin="0,10,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="- Laser distance (RS-485)" />
+                            <TextBlock Text="- Vibration (RS-485)" />
+                            <TextBlock Text="- Pressure (analog current sampling)" />
+                            <TextBlock Text="- Torque (analog current sampling)" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

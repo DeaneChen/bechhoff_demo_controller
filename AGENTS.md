@@ -13,6 +13,7 @@
 - 上位机解决方案：`PcHost/PcHost/PcHost.sln`
   - 控制台：`PcHost/PcHost/PcHostConsole/PcHostConsole.csproj`
   - 可复用核心库（供后续 WPF/WinForms 共用）：`PcHost/PcHost/PcHost.Core/PcHost.Core.csproj`
+  - GUI（WPF .NET Framework）：`PcHost/PcHost/PcHostGUI/PcHostGUI.csproj`
 - ADS 库：NuGet `Beckhoff.TwinCAT.Ads`
   - 仅安装 NuGet 不等于能连通：PC 侧仍需配置 ADS Router/Route（到目标 PLC 的 AMS Route）。
   - 运行时依赖：请从 `PcHostConsole/bin/Release` 目录运行（确保 `TwinCAT.Ads*.dll` 在同目录）。
