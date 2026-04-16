@@ -98,6 +98,10 @@
     VmTargetSpeedEffRpm : INT; // I6043 (H0383) 16-bit (effective)
     VmActualSpeedRpm : INT;    // I6044 (H0384) 16-bit
 
+    // VM config progress (helps debug/avoid powering on before config is applied)
+    VmCfgPending : BOOL;
+    VmCfgIndex : USINT;
+
     // Debug frames
     LastTxLen : USINT;
     LastTx : ARRAY [0..21] OF USINT;

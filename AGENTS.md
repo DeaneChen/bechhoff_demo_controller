@@ -97,7 +97,7 @@
 - VM 模式写速度有一个 `200ms` 启动延时（对齐 SDK `power_on` 后的延时），并且当驱动内部状态从“未准备好(H01DE=0)”跳到非 0 时会再强制重发一次 ControlWord/速度，提高复现稳定性。
 - VM 模式下写 `H0382` 会在 `Cia402State=Operation enabled` 后才发送（避免驱动未就绪时写入被吞/状态不一致）。
 - 重要：早期版本如果你在驱动未到 `Operation enabled` 前就写 `TargetVelocity`，可能会因为“速度写入待处理”逻辑阻塞后续轮询，导致 `StatusWord` 不再更新、状态机卡在 `ControlWord=0x0006`，表现为“偶发不转/重启后不转”。当前版本已修复：当条件不满足时不再 `RETURN`，会继续轮询推进状态机。
-- Modbus 帧间隔：`FB_ModbusRtuMaster` 增加 `MinGap`（默认 `5ms`）用于限制相邻两帧的最小静默时间，避免 back-to-back 过快导致某些设备偶发不响应；如仍不稳定可尝试增大到 `10ms` 或 `20ms`。
+- Modbus 帧间隔：`FB_ModbusRtuMaster` 增加 `MinGap`（默认 `20ms`，对齐 SDK `PDOIntervalMS=20`）用于限制相邻两帧的最小静默时间，避免 back-to-back 过快导致某些设备偶发不响应；如果你追求更快轮询可尝试减到 `10ms`/`5ms`，但更容易出现超时/短帧。
 
 ### 上位机（ADS）推荐启动顺序（VM 模式）
 - “一次性初始化”（通常只做一次）：
@@ -121,6 +121,11 @@
 - 停机：
   - `PcHostConsole.exe --ams <AmsNetId> nimservo-stop`（默认会先写 `TargetVelocity=0` 再 `PowerEnable=false`）
   - `PcHostConsole.exe --ams <AmsNetId> nimservo-stop --disable`（额外把 `Enable=false`）
+
+### VM 参数写入的稳定性（重要）
+- 一些驱动对 Modbus `0x10(写多个寄存器)` 兼容性一般，失败时 PLC 会卡在“反复重试写 VM 参数”的步骤，导致你看到 `CommErrorCount` 持续增加、并且目标速度写入/遥测更新都被拖慢。
+- 本工程已把 VM 参数写入改为 `0x06(单寄存器写)` 串行写入，并且只在 `PowerEnable=false` 时写（对齐 SDK 流程：`power_off -> set_workMode/limits/accel/decel -> power_on`）。
+- `PcHostConsole nimservo-start-vm` 现在会等待 `GVL_NimServo.VmCfgPending=false` 再 `PowerEnable=true`，避免“参数还没写完就上电”。
 
 ## TwinCAT ST 兼容性注意事项（本工程）
 - 避免使用：

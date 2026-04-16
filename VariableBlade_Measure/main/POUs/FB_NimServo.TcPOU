@@ -85,6 +85,10 @@ VAR_OUTPUT
     VmTargetSpeedEffRpm : INT;
     VmActualSpeedRpm : INT;
 
+    VmCfgPendingOut : BOOL;
+    VmCfgIndexOut : USINT;
+
+
     LastTxLen : USINT;
     LastTx : ARRAY [0..21] OF USINT;
     LastRxLen : USINT;
@@ -111,6 +115,7 @@ VAR
 
     vmCfgPending : BOOL;
     vmCfgStage : USINT; // 0=min/max, 1=accel/decel, 2=done
+    vmCfgIndex : USINT; // 0..9 (single-register writes)
     vmStopPending : BOOL;
     lastVmSpeedMin : UDINT;
     lastVmSpeedMax : UDINT;
@@ -214,6 +219,7 @@ END_VAR
     VmActualSpeedRpm := 0;
     vmCfgPending := FALSE;
     vmCfgStage := 0;
+    vmCfgIndex := 0;
     vmStopPending := FALSE;
     velWritePending := FALSE;
     ControlWord := 0;
@@ -230,6 +236,7 @@ IF Enable AND (NOT enablePrev) THEN
     modeWritePending := TRUE;
     vmCfgPending := TRUE;
     vmCfgStage := 0;
+    vmCfgIndex := 0;
     forceCtrlWrite := TRUE;
     velWritePending := TRUE;
 END_IF
@@ -242,6 +249,7 @@ IF PowerEnable AND (NOT powerEnablePrev) THEN
     IF DesiredMode = 2 THEN
         vmCfgPending := TRUE;
         vmCfgStage := 0;
+        vmCfgIndex := 0;
     END_IF
 END_IF
 // PowerEnable falling edge: in VM mode, command target speed = 0 once to ensure stop
@@ -257,6 +265,7 @@ IF DesiredMode <> lastDesiredMode THEN
     modeWritePending := TRUE;
     vmCfgPending := TRUE;
     vmCfgStage := 0;
+    vmCfgIndex := 0;
 END_IF
 
 // Track target velocity change (for debug or for normal writes once comm works)
@@ -279,6 +288,7 @@ IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (Vm
     lastVmDecelTimeS := VmDecelTimeS;
     vmCfgPending := TRUE;
     vmCfgStage := 0;
+    vmCfgIndex := 0;
 END_IF
 
 // Latch one-shot command
@@ -335,8 +345,6 @@ IF mb.Error THEN
     ELSIF op = 25 THEN
         vmStopPending := TRUE;
     ELSIF op = 23 THEN
-        vmCfgPending := TRUE;
-    ELSIF op = 24 THEN
         vmCfgPending := TRUE;
     END_IF
 
@@ -441,17 +449,13 @@ IF mb.Done THEN
         ;
     25: // VM stop (write H0382=0) done
         vmStopPending := FALSE;
-    23: // Write VM cfg done
-        IF vmCfgStage = 0 THEN
-            vmCfgStage := 1;
+    23: // Write VM cfg single register done
+        IF vmCfgIndex < 9 THEN
+            vmCfgIndex := vmCfgIndex + 1;
             vmCfgPending := TRUE;
         ELSE
-            vmCfgStage := 2;
             vmCfgPending := FALSE;
         END_IF
-    24: // Write VM cfg stage 1 done
-        vmCfgStage := 2;
-        vmCfgPending := FALSE;
     ELSE
         ;
     END_CASE
@@ -462,6 +466,10 @@ IF mb.Done THEN
         step := 0;
     END_IF
 END_IF
+
+// expose VM config progress
+VmCfgPendingOut := vmCfgPending;
+VmCfgIndexOut := vmCfgIndex;
 
 // If drive transitions from "not ready" to "ready/loop active", re-assert control and target speed once.
 IF (driveStatePrev = 0) AND (DriveInternalState <> 0) THEN
@@ -888,74 +896,76 @@ IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
         mbReqHold := TRUE;
 
     15: // VM config writes (only in VM mode)
-        IF vmCfgPending AND (DesiredMode = 2) THEN
-            IF vmCfgStage = 0 THEN
-                // Stage 0: write VM speed min/max (H0385..H0388), 4 regs => 8 bytes (fits 22-byte EL6022 limit)
-                mbFunc := 16;
-                mbAddr := 16#0385;
-                mbQty := 4;
-                mbWbc := 8;
+        // Use single-register writes (0x06) for maximum device compatibility.
+        // Also keep it before PowerEnable (aligns with SDK: power_off -> set params -> power_on).
+        IF vmCfgPending AND (DesiredMode = 2) AND (NOT PowerEnable) THEN
+            mbFunc := 6;
+            mbQty := 1;
+            mbWbc := 2;
 
-                // Min (UDINT)
+            CASE vmCfgIndex OF
+            0: // H0385 min speed (hi word)
                 uTmp := VmSpeedMinRpm;
                 hi := UDINT_TO_UINT(SHR(uTmp, 16));
-                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbAddr := 16#0385;
                 mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
                 mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
-                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
-                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
-
-                // Max (UDINT)
+            1: // H0386 min speed (lo word)
+                uTmp := VmSpeedMinRpm;
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbAddr := 16#0386;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+            2: // H0387 max speed (hi word)
                 uTmp := VmSpeedMaxRpm;
                 hi := UDINT_TO_UINT(SHR(uTmp, 16));
-                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
-                mbWData[4] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
-                mbWData[5] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
-                mbWData[6] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
-                mbWData[7] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
-
-                op := 23;
-                mbReqHold := TRUE;
-                vmCfgPending := FALSE;
-                RETURN;
-            ELSE
-                // Stage 1: write VM accel/decel + time (H0389..H038E), 6 regs => 12 bytes (fits)
-                mbFunc := 16;
-                mbAddr := 16#0389;
-                mbQty := 6;
-                mbWbc := 12;
-
-                // Accel (UDINT)
-                uTmp := VmAccelRpm;
-                hi := UDINT_TO_UINT(SHR(uTmp, 16));
-                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbAddr := 16#0387;
                 mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
                 mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
-                mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
-                mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
-
-                // Accel time (seconds): I6048-2 (H038B)
-                mbWData[4] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmAccelTimeS), 8));
-                mbWData[5] := WORD_TO_USINT(UINT_TO_WORD(VmAccelTimeS) AND 16#00FF);
-
-                // Decel (UDINT)
+            3: // H0388 max speed (lo word)
+                uTmp := VmSpeedMaxRpm;
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbAddr := 16#0388;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+            4: // H0389 accel (hi word)
+                uTmp := VmAccelRpm;
+                hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                mbAddr := 16#0389;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+            5: // H038A accel (lo word)
+                uTmp := VmAccelRpm;
+                lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
+                mbAddr := 16#038A;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+            6: // H038B accel time (seconds)
+                mbAddr := 16#038B;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmAccelTimeS), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(VmAccelTimeS) AND 16#00FF);
+            7: // H038C decel (hi word)
                 uTmp := VmDecelRpm;
                 hi := UDINT_TO_UINT(SHR(uTmp, 16));
+                mbAddr := 16#038C;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
+            8: // H038D decel (lo word)
+                uTmp := VmDecelRpm;
                 lo := UDINT_TO_UINT(uTmp AND 16#0000FFFF);
-                mbWData[6] := WORD_TO_USINT(SHR(UINT_TO_WORD(hi), 8));
-                mbWData[7] := WORD_TO_USINT(UINT_TO_WORD(hi) AND 16#00FF);
-                mbWData[8] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
-                mbWData[9] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+                mbAddr := 16#038D;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
+            ELSE // 9: H038E decel time (seconds)
+                mbAddr := 16#038E;
+                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmDecelTimeS), 8));
+                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(VmDecelTimeS) AND 16#00FF);
+            END_CASE
 
-                // Decel time (seconds): I6049-2 (H038E)
-                mbWData[10] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmDecelTimeS), 8));
-                mbWData[11] := WORD_TO_USINT(UINT_TO_WORD(VmDecelTimeS) AND 16#00FF);
-
-                op := 24;
-                mbReqHold := TRUE;
-                vmCfgPending := FALSE;
-                RETURN;
-            END_IF
+            op := 23;
+            mbReqHold := TRUE;
+            vmCfgPending := FALSE;
+            RETURN;
         END_IF
         step := 16;
 

@@ -16,7 +16,7 @@ VAR_INPUT
     WriteData : ARRAY [0..21] OF USINT; // big-endian per register
 
     Timeout : TIME := T#200ms;
-    MinGap : TIME := T#5ms; // minimum silent time between Modbus frames (device compatibility)
+    MinGap : TIME := T#20ms; // minimum silent time between Modbus frames (aligns with SDK PDOIntervalMS=20ms)
 END_VAR
 VAR_OUTPUT
     PortReady : BOOL;

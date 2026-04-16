@@ -679,7 +679,17 @@ namespace PcHostConsole
                         {
                             bool commOk = plc.ReadSymbol<bool>("GVL_NimServo.CommOk");
                             bool modeOk = plc.ReadSymbol<bool>("GVL_NimServo.ControlModeOk");
-                            if (commOk && modeOk)
+                            bool cfgPending = false;
+                            try
+                            {
+                                cfgPending = plc.ReadSymbol<bool>("GVL_NimServo.VmCfgPending");
+                            }
+                            catch
+                            {
+                                // ignore (older PLC versions)
+                            }
+
+                            if (commOk && modeOk && !cfgPending)
                             {
                                 break;
                             }
@@ -689,15 +699,29 @@ namespace PcHostConsole
 
                         bool commOkNow = plc.ReadSymbol<bool>("GVL_NimServo.CommOk");
                         bool modeOkNow = plc.ReadSymbol<bool>("GVL_NimServo.ControlModeOk");
-                        if (!commOkNow || !modeOkNow)
+                        bool cfgPendingNow = false;
+                        byte cfgIndexNow = 0;
+                        try
+                        {
+                            cfgPendingNow = plc.ReadSymbol<bool>("GVL_NimServo.VmCfgPending");
+                            cfgIndexNow = plc.ReadSymbol<byte>("GVL_NimServo.VmCfgIndex");
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+                        if (!commOkNow || !modeOkNow || cfgPendingNow)
                         {
                             uint errCount = plc.ReadSymbol<uint>("GVL_NimServo.CommErrorCount");
                             uint lastErr = plc.ReadSymbol<uint>("GVL_NimServo.LastErrorId");
                             byte cia = plc.ReadSymbol<byte>("GVL_NimServo.Cia402State");
                             ushort sw = plc.ReadSymbol<ushort>("GVL_NimServo.StatusWord");
 
-                            Console.Error.WriteLine("Timeout waiting for CommOk/ControlModeOk.");
-                            Console.Error.WriteLine("CommOk=" + (commOkNow ? "true" : "false") + " ControlModeOk=" + (modeOkNow ? "true" : "false"));
+                            Console.Error.WriteLine("Timeout waiting for CommOk/ControlModeOk/(VmCfgPending=false).");
+                            Console.Error.WriteLine("CommOk=" + (commOkNow ? "true" : "false") +
+                                                    " ControlModeOk=" + (modeOkNow ? "true" : "false") +
+                                                    " VmCfgPending=" + (cfgPendingNow ? "true" : "false") +
+                                                    " VmCfgIndex=" + cfgIndexNow.ToString(CultureInfo.InvariantCulture));
                             Console.Error.WriteLine("CommErrorCount=" + errCount.ToString(CultureInfo.InvariantCulture) + " LastErrorId=" + lastErr.ToString(CultureInfo.InvariantCulture));
                             Console.Error.WriteLine("Cia402State=" + cia.ToString(CultureInfo.InvariantCulture) + " StatusWord=" + sw.ToString(CultureInfo.InvariantCulture));
                             return 1;
