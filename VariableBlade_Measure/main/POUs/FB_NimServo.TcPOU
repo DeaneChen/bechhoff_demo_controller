@@ -17,7 +17,9 @@ VAR_INPUT
     VmSpeedMinRpm : UDINT;
     VmSpeedMaxRpm : UDINT;
     VmAccelRpm : UDINT;
+    VmAccelTimeS : UINT;
     VmDecelRpm : UDINT;
+    VmDecelTimeS : UINT;
 
     CmdSeq : UDINT;
     Cmd : USINT; // 0=None, 1=FaultReset
@@ -114,6 +116,8 @@ VAR
     lastVmSpeedMax : UDINT;
     lastVmAccel : UDINT;
     lastVmDecel : UDINT;
+    lastVmAccelTimeS : UINT;
+    lastVmDecelTimeS : UINT;
 
     lastDesiredMode : USINT;
     modeWritePending : BOOL;
@@ -166,6 +170,8 @@ END_VAR
     lastVmSpeedMax := 0;
     lastVmAccel := 0;
     lastVmDecel := 0;
+    lastVmAccelTimeS := 0;
+    lastVmDecelTimeS := 0;
 
     Cia402State := 0;
     ErrorRegister := 0;
@@ -264,11 +270,13 @@ IF TargetVelocity <> lastTargetVelocity THEN
 END_IF
 
 // Track VM parameter changes (only applied when DesiredMode=VM)
-IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (VmAccelRpm <> lastVmAccel) OR (VmDecelRpm <> lastVmDecel) THEN
+IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (VmAccelRpm <> lastVmAccel) OR (VmDecelRpm <> lastVmDecel) OR (VmAccelTimeS <> lastVmAccelTimeS) OR (VmDecelTimeS <> lastVmDecelTimeS) THEN
     lastVmSpeedMin := VmSpeedMinRpm;
     lastVmSpeedMax := VmSpeedMaxRpm;
     lastVmAccel := VmAccelRpm;
     lastVmDecel := VmDecelRpm;
+    lastVmAccelTimeS := VmAccelTimeS;
+    lastVmDecelTimeS := VmDecelTimeS;
     vmCfgPending := TRUE;
     vmCfgStage := 0;
 END_IF
@@ -926,9 +934,9 @@ IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
                 mbWData[2] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
                 mbWData[3] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
 
-                // Accel time = 1s
-                mbWData[4] := 0;
-                mbWData[5] := 1;
+                // Accel time (seconds): I6048-2 (H038B)
+                mbWData[4] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmAccelTimeS), 8));
+                mbWData[5] := WORD_TO_USINT(UINT_TO_WORD(VmAccelTimeS) AND 16#00FF);
 
                 // Decel (UDINT)
                 uTmp := VmDecelRpm;
@@ -939,9 +947,9 @@ IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
                 mbWData[8] := WORD_TO_USINT(SHR(UINT_TO_WORD(lo), 8));
                 mbWData[9] := WORD_TO_USINT(UINT_TO_WORD(lo) AND 16#00FF);
 
-                // Decel time = 1s
-                mbWData[10] := 0;
-                mbWData[11] := 1;
+                // Decel time (seconds): I6049-2 (H038E)
+                mbWData[10] := WORD_TO_USINT(SHR(UINT_TO_WORD(VmDecelTimeS), 8));
+                mbWData[11] := WORD_TO_USINT(UINT_TO_WORD(VmDecelTimeS) AND 16#00FF);
 
                 op := 24;
                 mbReqHold := TRUE;

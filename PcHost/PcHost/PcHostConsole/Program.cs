@@ -541,6 +541,298 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "nimservo-start-vm", StringComparison.OrdinalIgnoreCase))
+                {
+                    int? ch = null;
+                    byte? slaveId = null;
+                    int rpm = 200;
+                    int timeoutMs = 8000;
+                    int waitMs = 2000;
+                    int minActualRpm = 20;
+                    int toleranceRpm = 10;
+                    bool reset = false;
+
+                    uint? vmMinRpm = null;
+                    uint? vmMaxRpm = null;
+                    uint? vmAccelRpm = null;
+                    uint? vmDecelRpm = null;
+                    ushort? vmAccelTimeS = null;
+                    ushort? vmDecelTimeS = null;
+
+                    int i = index + 1;
+                    while (i < args.Length)
+                    {
+                        string k = args[i];
+                        if (string.Equals(k, "--ch", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ch = int.Parse(RequireArg(args, ref i, "--ch"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--id", StringComparison.OrdinalIgnoreCase))
+                        {
+                            slaveId = byte.Parse(RequireArg(args, ref i, "--id"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            rpm = int.Parse(RequireArg(args, ref i, "--rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--timeout-ms", StringComparison.OrdinalIgnoreCase))
+                        {
+                            timeoutMs = int.Parse(RequireArg(args, ref i, "--timeout-ms"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--wait-ms", StringComparison.OrdinalIgnoreCase))
+                        {
+                            waitMs = int.Parse(RequireArg(args, ref i, "--wait-ms"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--min-actual-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            minActualRpm = int.Parse(RequireArg(args, ref i, "--min-actual-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--tolerance-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            toleranceRpm = int.Parse(RequireArg(args, ref i, "--tolerance-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--reset", StringComparison.OrdinalIgnoreCase))
+                        {
+                            reset = true;
+                        }
+                        else if (string.Equals(k, "--min-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmMinRpm = uint.Parse(RequireArg(args, ref i, "--min-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--max-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmMaxRpm = uint.Parse(RequireArg(args, ref i, "--max-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--accel-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmAccelRpm = uint.Parse(RequireArg(args, ref i, "--accel-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--decel-rpm", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmDecelRpm = uint.Parse(RequireArg(args, ref i, "--decel-rpm"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--accel-time-s", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmAccelTimeS = ushort.Parse(RequireArg(args, ref i, "--accel-time-s"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--decel-time-s", StringComparison.OrdinalIgnoreCase))
+                        {
+                            vmDecelTimeS = ushort.Parse(RequireArg(args, ref i, "--decel-time-s"), CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Unknown nimservo-start-vm option: " + k);
+                            return 2;
+                        }
+
+                        i++;
+                    }
+
+                    if (ch.HasValue && ch.Value != 1 && ch.Value != 2)
+                    {
+                        Console.Error.WriteLine("--ch must be 1 or 2");
+                        return 2;
+                    }
+
+                    if (slaveId.HasValue && (slaveId.Value == 0 || slaveId.Value > 247))
+                    {
+                        Console.Error.WriteLine("--id must be 1..247");
+                        return 2;
+                    }
+
+                    Console.WriteLine("Connecting to " + amsNetId + ":" + port);
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        if (reset)
+                        {
+                            plc.WriteSymbol("GVL_NimServo.PowerEnable", false);
+                            plc.WriteSymbol("GVL_NimServo.Enable", false);
+                            Thread.Sleep(300);
+                        }
+
+                        if (ch.HasValue)
+                        {
+                            plc.WriteSymbol("GVL_NimServo.Channel", (byte)ch.Value);
+                        }
+
+                        if (slaveId.HasValue)
+                        {
+                            plc.WriteSymbol("GVL_NimServo.SlaveId", slaveId.Value);
+                        }
+
+                        if (vmMinRpm.HasValue) plc.WriteSymbol("GVL_NimServo.VmSpeedMinRpm", vmMinRpm.Value);
+                        if (vmMaxRpm.HasValue) plc.WriteSymbol("GVL_NimServo.VmSpeedMaxRpm", vmMaxRpm.Value);
+                        if (vmAccelRpm.HasValue) plc.WriteSymbol("GVL_NimServo.VmAccelRpm", vmAccelRpm.Value);
+                        if (vmDecelRpm.HasValue) plc.WriteSymbol("GVL_NimServo.VmDecelRpm", vmDecelRpm.Value);
+                        if (vmAccelTimeS.HasValue) plc.WriteSymbol("GVL_NimServo.VmAccelTimeS", vmAccelTimeS.Value);
+                        if (vmDecelTimeS.HasValue) plc.WriteSymbol("GVL_NimServo.VmDecelTimeS", vmDecelTimeS.Value);
+
+                        plc.WriteSymbol("GVL_NimServo.DesiredMode", (byte)2);
+                        plc.WriteSymbol("GVL_NimServo.Enable", true);
+
+                        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+
+                        // Wait comm ok + CIA402 mode ok (PLC may auto-set mode)
+                        while (DateTime.UtcNow < deadline)
+                        {
+                            bool commOk = plc.ReadSymbol<bool>("GVL_NimServo.CommOk");
+                            bool modeOk = plc.ReadSymbol<bool>("GVL_NimServo.ControlModeOk");
+                            if (commOk && modeOk)
+                            {
+                                break;
+                            }
+
+                            Thread.Sleep(20);
+                        }
+
+                        bool commOkNow = plc.ReadSymbol<bool>("GVL_NimServo.CommOk");
+                        bool modeOkNow = plc.ReadSymbol<bool>("GVL_NimServo.ControlModeOk");
+                        if (!commOkNow || !modeOkNow)
+                        {
+                            uint errCount = plc.ReadSymbol<uint>("GVL_NimServo.CommErrorCount");
+                            uint lastErr = plc.ReadSymbol<uint>("GVL_NimServo.LastErrorId");
+                            byte cia = plc.ReadSymbol<byte>("GVL_NimServo.Cia402State");
+                            ushort sw = plc.ReadSymbol<ushort>("GVL_NimServo.StatusWord");
+
+                            Console.Error.WriteLine("Timeout waiting for CommOk/ControlModeOk.");
+                            Console.Error.WriteLine("CommOk=" + (commOkNow ? "true" : "false") + " ControlModeOk=" + (modeOkNow ? "true" : "false"));
+                            Console.Error.WriteLine("CommErrorCount=" + errCount.ToString(CultureInfo.InvariantCulture) + " LastErrorId=" + lastErr.ToString(CultureInfo.InvariantCulture));
+                            Console.Error.WriteLine("Cia402State=" + cia.ToString(CultureInfo.InvariantCulture) + " StatusWord=" + sw.ToString(CultureInfo.InvariantCulture));
+                            return 1;
+                        }
+
+                        plc.WriteSymbol("GVL_NimServo.PowerEnable", true);
+
+                        // Wait operation enabled
+                        while (DateTime.UtcNow < deadline)
+                        {
+                            byte cia = plc.ReadSymbol<byte>("GVL_NimServo.Cia402State");
+                            if (cia == 5)
+                            {
+                                break;
+                            }
+
+                            Thread.Sleep(20);
+                        }
+
+                        byte ciaNow = plc.ReadSymbol<byte>("GVL_NimServo.Cia402State");
+                        if (ciaNow != 5)
+                        {
+                            ushort sw = plc.ReadSymbol<ushort>("GVL_NimServo.StatusWord");
+                            byte internalState = plc.ReadSymbol<byte>("GVL_NimServo.DriveInternalState");
+                            Console.Error.WriteLine("Timeout waiting for Operation enabled (Cia402State=5).");
+                            Console.Error.WriteLine("Cia402State=" + ciaNow.ToString(CultureInfo.InvariantCulture) + " StatusWord=" + sw.ToString(CultureInfo.InvariantCulture));
+                            Console.Error.WriteLine("DriveInternalState=" + internalState.ToString(CultureInfo.InvariantCulture));
+                            return 1;
+                        }
+
+                        plc.WriteSymbol("GVL_NimServo.TargetVelocity", rpm);
+
+                        // Wait until the drive really starts moving / accepts the target (helps catch "Started but not moving").
+                        DateTime speedDeadline = DateTime.UtcNow.AddMilliseconds(Math.Max(0, waitMs));
+                        short eff = 0;
+                        short actual = 0;
+                        while (DateTime.UtcNow < speedDeadline)
+                        {
+                            try
+                            {
+                                eff = plc.ReadSymbol<short>("GVL_NimServo.VmTargetSpeedEffRpm");
+                                actual = plc.ReadSymbol<short>("GVL_NimServo.VmActualSpeedRpm");
+                            }
+                            catch
+                            {
+                                // If telemetry symbols aren't present, we can't verify motion; treat as success after command issue.
+                                Console.WriteLine("Started VM. TargetVelocity=" + rpm.ToString(CultureInfo.InvariantCulture));
+                                return 0;
+                            }
+
+                            if (Math.Abs(eff - rpm) <= toleranceRpm && Math.Abs(actual) >= minActualRpm)
+                            {
+                                Console.WriteLine("Started VM. TargetVelocity=" + rpm.ToString(CultureInfo.InvariantCulture) +
+                                                  " VmTargetSpeedEffRpm=" + eff.ToString(CultureInfo.InvariantCulture) +
+                                                  " VmActualSpeedRpm=" + actual.ToString(CultureInfo.InvariantCulture));
+                                return 0;
+                            }
+
+                            Thread.Sleep(50);
+                        }
+
+                        // Timeout waiting for motion -> dump key diagnostics.
+                        byte cia2 = plc.ReadSymbol<byte>("GVL_NimServo.Cia402State");
+                        ushort sw2 = plc.ReadSymbol<ushort>("GVL_NimServo.StatusWord");
+                        ushort cw2 = plc.ReadSymbol<ushort>("GVL_NimServo.ControlWord");
+                        byte internalState2 = plc.ReadSymbol<byte>("GVL_NimServo.DriveInternalState");
+                        bool enableDiOk2 = plc.ReadSymbol<bool>("GVL_NimServo.EnableDiOk");
+                        ushort diSignals2 = plc.ReadSymbol<ushort>("GVL_NimServo.DiSignals");
+                        uint errCount2 = plc.ReadSymbol<uint>("GVL_NimServo.CommErrorCount");
+                        uint lastErr2 = plc.ReadSymbol<uint>("GVL_NimServo.LastErrorId");
+
+                        Console.Error.WriteLine("Start VM issued but no motion detected within --wait-ms.");
+                        Console.Error.WriteLine("TargetVelocity=" + rpm.ToString(CultureInfo.InvariantCulture) +
+                                                " VmTargetSpeedEffRpm=" + eff.ToString(CultureInfo.InvariantCulture) +
+                                                " VmActualSpeedRpm=" + actual.ToString(CultureInfo.InvariantCulture));
+                        Console.Error.WriteLine("Cia402State=" + cia2.ToString(CultureInfo.InvariantCulture) +
+                                                " StatusWord=" + sw2.ToString(CultureInfo.InvariantCulture) +
+                                                " ControlWord=" + cw2.ToString(CultureInfo.InvariantCulture));
+                        Console.Error.WriteLine("DriveInternalState=" + internalState2.ToString(CultureInfo.InvariantCulture) +
+                                                " EnableDiOk=" + (enableDiOk2 ? "true" : "false") +
+                                                " DiSignals=" + diSignals2.ToString(CultureInfo.InvariantCulture));
+                        Console.Error.WriteLine("CommErrorCount=" + errCount2.ToString(CultureInfo.InvariantCulture) +
+                                                " LastErrorId=" + lastErr2.ToString(CultureInfo.InvariantCulture));
+                        return 1;
+                    }
+                }
+
+                if (string.Equals(command, "nimservo-stop", StringComparison.OrdinalIgnoreCase))
+                {
+                    bool disable = false;
+                    bool keepSpeed = false;
+
+                    int i = index + 1;
+                    while (i < args.Length)
+                    {
+                        string k = args[i];
+                        if (string.Equals(k, "--disable", StringComparison.OrdinalIgnoreCase))
+                        {
+                            disable = true;
+                        }
+                        else if (string.Equals(k, "--keep-speed", StringComparison.OrdinalIgnoreCase))
+                        {
+                            keepSpeed = true;
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Unknown nimservo-stop option: " + k);
+                            return 2;
+                        }
+
+                        i++;
+                    }
+
+                    Console.WriteLine("Connecting to " + amsNetId + ":" + port);
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        if (!keepSpeed)
+                        {
+                            plc.WriteSymbol("GVL_NimServo.TargetVelocity", 0);
+                        }
+
+                        plc.WriteSymbol("GVL_NimServo.PowerEnable", false);
+
+                        if (disable)
+                        {
+                            plc.WriteSymbol("GVL_NimServo.Enable", false);
+                        }
+
+                        Console.WriteLine("Stopped. PowerEnable=false" + (disable ? " Enable=false" : ""));
+                        return 0;
+                    }
+                }
+
                 if (string.Equals(command, "el6022-loopback", StringComparison.OrdinalIgnoreCase))
                 {
                     int txCh = 1;
@@ -758,6 +1050,9 @@ namespace PcHostConsole
             Console.WriteLine("  write-i16 <SYMBOL> <VALUE>");
             Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
+            Console.WriteLine("  nimservo-start-vm [--reset] [--ch 1|2] [--id 1..247] [--rpm 200] [--timeout-ms 8000] [--wait-ms 2000] [--min-actual-rpm 20] [--tolerance-rpm 10]");
+            Console.WriteLine("                 [--min-rpm N] [--max-rpm N] [--accel-rpm N] [--decel-rpm N] [--accel-time-s N] [--decel-time-s N]");
+            Console.WriteLine("  nimservo-stop [--disable] [--keep-speed]");
             Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");
             Console.WriteLine("  el6022-dump");
             Console.WriteLine();

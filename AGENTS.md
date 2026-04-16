@@ -113,6 +113,15 @@
   5) `write-i32 GVL_NimServo.TargetVelocity 200`（rpm，VM 模式写入 `H0382`；可随后改 400/500）
   6) 停机：`write-i32 GVL_NimServo.TargetVelocity 0`，再 `write-bool GVL_NimServo.PowerEnable false`
 
+### PcHostConsole 一键命令（VM）
+- 启动（可选同时设置 VM 参数让加减速更快）：
+  - `PcHostConsole.exe --ams <AmsNetId> nimservo-start-vm --reset --ch 1 --id 1 --rpm 200`
+  - `PcHostConsole.exe --ams <AmsNetId> nimservo-start-vm --rpm 500 --accel-rpm 2000 --accel-time-s 1 --decel-rpm 2000 --decel-time-s 1 --max-rpm 2000`
+  - 默认会等待电机“真正动起来”（`VmTargetSpeedEffRpm` 接近目标且 `VmActualSpeedRpm` 超过阈值）；如超时会打印 `Cia402State/StatusWord/ControlWord/DI` 等诊断信息，方便定位。
+- 停机：
+  - `PcHostConsole.exe --ams <AmsNetId> nimservo-stop`（默认会先写 `TargetVelocity=0` 再 `PowerEnable=false`）
+  - `PcHostConsole.exe --ams <AmsNetId> nimservo-stop --disable`（额外把 `Enable=false`）
+
 ## TwinCAT ST 兼容性注意事项（本工程）
 - 避免使用：
   - 命名参数：`SHL(IN := ..., N := ...)` / `SHR(IN := ..., N := ...)`

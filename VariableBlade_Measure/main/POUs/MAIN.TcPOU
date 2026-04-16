@@ -32,7 +32,9 @@ fbNimServo(
     VmSpeedMinRpm := GVL_NimServo.VmSpeedMinRpm,
     VmSpeedMaxRpm := GVL_NimServo.VmSpeedMaxRpm,
     VmAccelRpm := GVL_NimServo.VmAccelRpm,
+    VmAccelTimeS := GVL_NimServo.VmAccelTimeS,
     VmDecelRpm := GVL_NimServo.VmDecelRpm,
+    VmDecelTimeS := GVL_NimServo.VmDecelTimeS,
     CmdSeq := GVL_NimServo.CmdSeq,
     Cmd := GVL_NimServo.Cmd
 );
@@ -172,6 +174,7 @@ END_IF
     </Implementation>
     <LineIds Name="MAIN">
       <LineId Id="2" Count="52" />
+      <LineId Id="56" Count="108" />
     </LineIds>
   </POU>
 </TcPlcObject>

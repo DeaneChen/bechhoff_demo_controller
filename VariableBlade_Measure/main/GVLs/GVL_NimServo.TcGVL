@@ -27,7 +27,9 @@
     VmSpeedMinRpm : UDINT := 0;     // I6046-1 (H0385), 32-bit
     VmSpeedMaxRpm : UDINT := 500;   // I6046-2 (H0387), 32-bit
     VmAccelRpm : UDINT := 200;      // I6048-1 (H0389), 32-bit
+    VmAccelTimeS : UINT := 1;       // I6048-2 (H038B), 16-bit, seconds
     VmDecelRpm : UDINT := 200;      // I6049-1 (H038C), 32-bit
+    VmDecelTimeS : UINT := 1;       // I6049-2 (H038E), 16-bit, seconds
 
     CmdSeq : UDINT; // PC increments to request a one-shot command
     Cmd : USINT;    // 0=None, 1=FaultReset
