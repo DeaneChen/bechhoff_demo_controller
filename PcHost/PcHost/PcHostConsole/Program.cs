@@ -558,6 +558,7 @@ namespace PcHostConsole
                     uint? vmDecelRpm = null;
                     ushort? vmAccelTimeS = null;
                     ushort? vmDecelTimeS = null;
+                    bool applyVmConfig = false;
 
                     int i = index + 1;
                     while (i < args.Length)
@@ -619,6 +620,10 @@ namespace PcHostConsole
                         {
                             vmDecelTimeS = ushort.Parse(RequireArg(args, ref i, "--decel-time-s"), CultureInfo.InvariantCulture);
                         }
+                        else if (string.Equals(k, "--apply-config", StringComparison.OrdinalIgnoreCase))
+                        {
+                            applyVmConfig = true;
+                        }
                         else
                         {
                             Console.Error.WriteLine("Unknown nimservo-start-vm option: " + k);
@@ -669,6 +674,13 @@ namespace PcHostConsole
                         if (vmAccelTimeS.HasValue) plc.WriteSymbol("GVL_NimServo.VmAccelTimeS", vmAccelTimeS.Value);
                         if (vmDecelTimeS.HasValue) plc.WriteSymbol("GVL_NimServo.VmDecelTimeS", vmDecelTimeS.Value);
 
+                        // Apply VM config only when explicitly requested, or when any VM params are provided.
+                        bool anyVmParamProvided =
+                            vmMinRpm.HasValue || vmMaxRpm.HasValue || vmAccelRpm.HasValue || vmDecelRpm.HasValue ||
+                            vmAccelTimeS.HasValue || vmDecelTimeS.HasValue;
+                        bool shouldApplyVmConfig = applyVmConfig || anyVmParamProvided;
+                        plc.WriteSymbol("GVL_NimServo.ApplyVmConfig", shouldApplyVmConfig);
+
                         plc.WriteSymbol("GVL_NimServo.DesiredMode", (byte)2);
                         plc.WriteSymbol("GVL_NimServo.Enable", true);
 
@@ -689,7 +701,7 @@ namespace PcHostConsole
                                 // ignore (older PLC versions)
                             }
 
-                            if (commOk && modeOk && !cfgPending)
+                            if (commOk && modeOk && (!shouldApplyVmConfig || !cfgPending))
                             {
                                 break;
                             }
@@ -710,7 +722,7 @@ namespace PcHostConsole
                         {
                             // ignore
                         }
-                        if (!commOkNow || !modeOkNow || cfgPendingNow)
+                        if (!commOkNow || !modeOkNow || (shouldApplyVmConfig && cfgPendingNow))
                         {
                             uint errCount = plc.ReadSymbol<uint>("GVL_NimServo.CommErrorCount");
                             uint lastErr = plc.ReadSymbol<uint>("GVL_NimServo.LastErrorId");
@@ -1074,7 +1086,7 @@ namespace PcHostConsole
             Console.WriteLine("  write-i16 <SYMBOL> <VALUE>");
             Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
-            Console.WriteLine("  nimservo-start-vm [--reset] [--ch 1|2] [--id 1..247] [--rpm 200] [--timeout-ms 8000] [--wait-ms 2000] [--min-actual-rpm 20] [--tolerance-rpm 10]");
+            Console.WriteLine("  nimservo-start-vm [--reset] [--ch 1|2] [--id 1..247] [--rpm 200] [--timeout-ms 8000] [--wait-ms 2000] [--min-actual-rpm 20] [--tolerance-rpm 10] [--apply-config]");
             Console.WriteLine("                 [--min-rpm N] [--max-rpm N] [--accel-rpm N] [--decel-rpm N] [--accel-time-s N] [--decel-time-s N]");
             Console.WriteLine("  nimservo-stop [--disable] [--keep-speed]");
             Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");

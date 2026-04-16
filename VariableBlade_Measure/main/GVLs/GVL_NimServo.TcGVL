@@ -22,6 +22,8 @@
     TargetVelocity : DINT; // Raw target velocity (unit depends on drive configuration)
     WordSwap32 : BOOL;
     TestForceVelocityWrite : BOOL; // Debug: send 60FF write even without successful comms / OP enabled
+    ExtendedPoll : BOOL := TRUE;    // TRUE: poll extended diagnostics (more traffic, more risk of timeouts on noisy links)
+    ApplyVmConfig : BOOL := FALSE;  // TRUE: apply VM min/max/accel/decel params via Modbus when PowerEnable=FALSE
 
     // VM mode parameters (from Modbus.db)
     VmSpeedMinRpm : UDINT := 0;     // I6046-1 (H0385), 32-bit

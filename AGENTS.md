@@ -127,6 +127,17 @@
 - 本工程已把 VM 参数写入改为 `0x06(单寄存器写)` 串行写入，并且只在 `PowerEnable=false` 时写（对齐 SDK 流程：`power_off -> set_workMode/limits/accel/decel -> power_on`）。
 - `PcHostConsole nimservo-start-vm` 现在会等待 `GVL_NimServo.VmCfgPending=false` 再 `PowerEnable=true`，避免“参数还没写完就上电”。
 
+### CommErrorCount=65538(0x00010002) 的含义与处理
+- `65538` 在本工程里对应 Modbus FB 的“短帧（rxBufLen < 5）”，多见于串口底层偶发噪声/半帧/粘包分包等情况。
+- 现已在 `FB_ModbusRtuMaster` 增加“丢弃无效帧并继续等待”的机制：短帧/CRC错/长度不符会记到 `RxDiscardCount/LastDiscardId`，但不会立刻把一次事务判为失败，从而减少 `CommOk` 抖动与 `CommErrorCount` 增长。
+
+### CommErrorCount=65537(0x00010001) 的含义与处理
+- `65537` 在本工程里对应 Modbus FB 的“超时（在 Timeout 内没等到有效响应）”。
+- 常见原因：轮询读了某些驱动不支持的寄存器（设备直接不回）、链路噪声导致响应被丢弃、或轮询/帧间隔太激进。
+- 处理建议：
+  - 先把 `GVL_NimServo.ExtendedPoll=false`（当前默认是 true），仅轮询 `StatusWord(H0381)` 与 `VM速度(H0382..H0384)`，可最大限度降低超时。
+  - 如仍超时：增大 `FB_ModbusRtuMaster.MinGap` 或 `FB_ModbusRtuMaster.Timeout`。
+
 ## TwinCAT ST 兼容性注意事项（本工程）
 - 避免使用：
   - 命名参数：`SHL(IN := ..., N := ...)` / `SHR(IN := ..., N := ...)`

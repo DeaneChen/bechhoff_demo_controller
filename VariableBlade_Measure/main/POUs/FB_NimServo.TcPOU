@@ -13,6 +13,8 @@ VAR_INPUT
     TargetVelocity : DINT;
     WordSwap32 : BOOL;
     TestForceVelocityWrite : BOOL;
+    ExtendedPoll : BOOL; // TRUE: poll extended diagnostics (more traffic)
+    ApplyVmConfig : BOOL; // TRUE: write VM params (min/max/accel/decel) when PowerEnable=FALSE
 
     VmSpeedMinRpm : UDINT;
     VmSpeedMaxRpm : UDINT;
@@ -153,6 +155,7 @@ VAR
 
     tVmStartDelay : TON;
     driveStatePrev : USINT;
+    applyVmConfigPrev : BOOL;
 END_VAR
 ]]></Declaration>
     <Implementation>
@@ -225,6 +228,7 @@ END_VAR
     ControlWord := 0;
     tVmStartDelay(IN := FALSE, PT := T#200ms);
     driveStatePrev := 0;
+    applyVmConfigPrev := FALSE;
     RETURN;
 END_IF
 
@@ -234,9 +238,16 @@ tVmStartDelay(IN := PowerEnable, PT := T#200ms);
 IF Enable AND (NOT enablePrev) THEN
     // On enable rising edge: force a mode write at least once
     modeWritePending := TRUE;
-    vmCfgPending := TRUE;
+    // Do not auto-write VM config on Enable; only apply when parameters are changed explicitly.
+    vmCfgPending := FALSE;
     vmCfgStage := 0;
     vmCfgIndex := 0;
+    lastVmSpeedMin := VmSpeedMinRpm;
+    lastVmSpeedMax := VmSpeedMaxRpm;
+    lastVmAccel := VmAccelRpm;
+    lastVmDecel := VmDecelRpm;
+    lastVmAccelTimeS := VmAccelTimeS;
+    lastVmDecelTimeS := VmDecelTimeS;
     forceCtrlWrite := TRUE;
     velWritePending := TRUE;
 END_IF
@@ -246,11 +257,6 @@ enablePrev := Enable;
 IF PowerEnable AND (NOT powerEnablePrev) THEN
     forceCtrlWrite := TRUE;
     velWritePending := TRUE;
-    IF DesiredMode = 2 THEN
-        vmCfgPending := TRUE;
-        vmCfgStage := 0;
-        vmCfgIndex := 0;
-    END_IF
 END_IF
 // PowerEnable falling edge: in VM mode, command target speed = 0 once to ensure stop
 IF (NOT PowerEnable) AND powerEnablePrev THEN
@@ -263,9 +269,6 @@ powerEnablePrev := PowerEnable;
 IF DesiredMode <> lastDesiredMode THEN
     lastDesiredMode := DesiredMode;
     modeWritePending := TRUE;
-    vmCfgPending := TRUE;
-    vmCfgStage := 0;
-    vmCfgIndex := 0;
 END_IF
 
 // Track target velocity change (for debug or for normal writes once comm works)
@@ -279,17 +282,36 @@ IF TargetVelocity <> lastTargetVelocity THEN
 END_IF
 
 // Track VM parameter changes (only applied when DesiredMode=VM)
-IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (VmAccelRpm <> lastVmAccel) OR (VmDecelRpm <> lastVmDecel) OR (VmAccelTimeS <> lastVmAccelTimeS) OR (VmDecelTimeS <> lastVmDecelTimeS) THEN
+IF ApplyVmConfig THEN
+    IF (VmSpeedMinRpm <> lastVmSpeedMin) OR (VmSpeedMaxRpm <> lastVmSpeedMax) OR (VmAccelRpm <> lastVmAccel) OR (VmDecelRpm <> lastVmDecel) OR (VmAccelTimeS <> lastVmAccelTimeS) OR (VmDecelTimeS <> lastVmDecelTimeS) THEN
+        lastVmSpeedMin := VmSpeedMinRpm;
+        lastVmSpeedMax := VmSpeedMaxRpm;
+        lastVmAccel := VmAccelRpm;
+        lastVmDecel := VmDecelRpm;
+        lastVmAccelTimeS := VmAccelTimeS;
+        lastVmDecelTimeS := VmDecelTimeS;
+        vmCfgPending := TRUE;
+        vmCfgStage := 0;
+        vmCfgIndex := 0;
+    END_IF
+ELSE
+    // When not applying config, keep last values in sync and clear any leftover pending state.
     lastVmSpeedMin := VmSpeedMinRpm;
     lastVmSpeedMax := VmSpeedMaxRpm;
     lastVmAccel := VmAccelRpm;
     lastVmDecel := VmDecelRpm;
     lastVmAccelTimeS := VmAccelTimeS;
     lastVmDecelTimeS := VmDecelTimeS;
-    vmCfgPending := TRUE;
-    vmCfgStage := 0;
+    vmCfgPending := FALSE;
     vmCfgIndex := 0;
 END_IF
+
+// Rising edge: (re)apply current VM config on next idle slot (while PowerEnable=FALSE)
+IF ApplyVmConfig AND (NOT applyVmConfigPrev) THEN
+    vmCfgPending := TRUE;
+    vmCfgIndex := 0;
+END_IF
+applyVmConfigPrev := ApplyVmConfig;
 
 // Latch one-shot command
 IF (CmdSeq <> CmdAckSeq) AND (NOT faultResetPending) THEN
@@ -345,7 +367,12 @@ IF mb.Error THEN
     ELSIF op = 25 THEN
         vmStopPending := TRUE;
     ELSIF op = 23 THEN
-        vmCfgPending := TRUE;
+        IF ApplyVmConfig THEN
+            vmCfgPending := TRUE;
+        ELSE
+            vmCfgPending := FALSE;
+            vmCfgIndex := 0;
+        END_IF
     END_IF
 
     op := 0;
@@ -784,121 +811,177 @@ IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
         mbReqHold := TRUE;
 
     1: // Read DiSignals (I200B-5 = H01E2)
-        mbFunc := 3;
-        mbAddr := 16#01E2;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 12;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#01E2;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 12;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     2: // Read DoSignals (I200B-6 = H01E3)
-        mbFunc := 3;
-        mbAddr := 16#01E3;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 18;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#01E3;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 18;
+            mbReqHold := TRUE;
+        ELSE
+            step := 3;
+        END_IF
 
     3: // Read Bus voltage & temp (I200B-21/22 = H01F7..H01F8)
-        mbFunc := 3;
-        mbAddr := 16#01F7;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 19;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#01F7;
+            mbQty := 2;
+            mbWbc := 0;
+            op := 19;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     4: // Read DriveInternalState (I200B-1 = H01DE)
-        mbFunc := 3;
-        mbAddr := 16#01DE;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 13;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#01DE;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 13;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     5: // Read FPGA absolute encoder & system status/fault (I200B-23..27 = H01F9..H01FD)
-        mbFunc := 3;
-        mbAddr := 16#01F9;
-        mbQty := 5;
-        mbWbc := 0;
-        op := 17;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#01F9;
+            mbQty := 5;
+            mbWbc := 0;
+            op := 17;
+            mbReqHold := TRUE;
+        ELSE
+            step := 6;
+        END_IF
 
     6: // Read ErrorRegister (I1001 = H0000)
-        mbFunc := 3;
-        mbAddr := 16#0000;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 14;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#0000;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 14;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     7: // Read CurrentAlarm (I1003-0 = H0001)
-        mbFunc := 3;
-        mbAddr := 16#0001;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 15;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#0001;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 15;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     8: // Read ModeDisplay (6061 = H03C3)
-        mbFunc := 3;
-        mbAddr := 16#03C3;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 2;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#03C3;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 2;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     9: // Read ActualVelocity (606C = H03D5, 2 regs)
-        mbFunc := 3;
-        mbAddr := 16#03D5;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 3;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#03D5;
+            mbQty := 2;
+            mbWbc := 0;
+            op := 3;
+            mbReqHold := TRUE;
+        ELSE
+            step := 10;
+        END_IF
 
     10: // Read ActualPosition (6064 = H03C8, 2 regs)
-        mbFunc := 3;
-        mbAddr := 16#03C8;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 4;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#03C8;
+            mbQty := 2;
+            mbWbc := 0;
+            op := 4;
+            mbReqHold := TRUE;
+        ELSE
+            step := 11;
+        END_IF
 
     11: // Read CurrentFeedback (6078 = H03E4)
-        mbFunc := 3;
-        mbAddr := 16#03E4;
-        mbQty := 1;
-        mbWbc := 0;
-        op := 5;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#03E4;
+            mbQty := 1;
+            mbWbc := 0;
+            op := 5;
+            mbReqHold := TRUE;
+        ELSE
+            step := 15;
+        END_IF
 
     12: // Read DI1..DI4 config (I2003-3..10 = H00D5..H00DC)
-        mbFunc := 3;
-        mbAddr := 16#00D5;
-        mbQty := 8;
-        mbWbc := 0;
-        op := 16;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#00D5;
+            mbQty := 8;
+            mbWbc := 0;
+            op := 16;
+            mbReqHold := TRUE;
+        ELSE
+            step := 17;
+        END_IF
 
     13: // Read DI5..DI8 config (I2003-11..18 = H00DD..H00E4)
-        mbFunc := 3;
-        mbAddr := 16#00DD;
-        mbQty := 8;
-        mbWbc := 0;
-        op := 20;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#00DD;
+            mbQty := 8;
+            mbWbc := 0;
+            op := 20;
+            mbReqHold := TRUE;
+        ELSE
+            step := 14;
+        END_IF
 
     14: // Read DI9 config (I2003-19..20 = H00E5..H00E6)
-        mbFunc := 3;
-        mbAddr := 16#00E5;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 21;
-        mbReqHold := TRUE;
+        IF ExtendedPoll THEN
+            mbFunc := 3;
+            mbAddr := 16#00E5;
+            mbQty := 2;
+            mbWbc := 0;
+            op := 21;
+            mbReqHold := TRUE;
+        ELSE
+            step := 15;
+        END_IF
 
     15: // VM config writes (only in VM mode)
         // Use single-register writes (0x06) for maximum device compatibility.
         // Also keep it before PowerEnable (aligns with SDK: power_off -> set params -> power_on).
-        IF vmCfgPending AND (DesiredMode = 2) AND (NOT PowerEnable) THEN
+        IF ApplyVmConfig AND vmCfgPending AND (DesiredMode = 2) AND (NOT PowerEnable) THEN
             mbFunc := 6;
             mbQty := 1;
             mbWbc := 2;

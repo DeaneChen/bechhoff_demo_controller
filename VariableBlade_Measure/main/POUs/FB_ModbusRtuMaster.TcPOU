@@ -26,6 +26,9 @@ VAR_OUTPUT
     ErrorId : UDINT;
     ExceptionCode : USINT;
 
+    RxDiscardCount : UDINT;
+    LastDiscardId : UDINT;
+
     ReadRegCount : USINT;
     ReadRegs : ARRAY [0..7] OF UINT;
 
@@ -105,6 +108,7 @@ CASE state OF
     Busy := FALSE;
     ErrorId := 0;
     ReadRegCount := 0;
+    // keep RxDiscardCount/LastDiscardId across cycles (diagnostics)
     rxBufLen := 0;
     RxLen := 0;
     TxLen := 0;
@@ -209,10 +213,12 @@ CASE state OF
     RxLen := rxBufLen;
 
     IF rxBufLen < 5 THEN
-        Error := TRUE;
-        ErrorId := 16#00010002; // short frame
-        Busy := FALSE;
-        state := 70;
+        // Some devices/interfaces may occasionally report a short/garbled frame.
+        // Discard and keep waiting for a valid response within the same transaction timeout.
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00020002; // discard: short frame
+        rxBufLen := 0;
+        state := 40;
         RETURN;
     END_IF
 
@@ -220,19 +226,19 @@ CASE state OF
     rxCrc := USINT_TO_WORD(rxBuf[rxBufLen - 2]) OR SHL(USINT_TO_WORD(rxBuf[rxBufLen - 1]), 8);
     calcCrc := F_ModbusCrc16(rxBuf, rxBufLen - 2);
     IF rxCrc <> calcCrc THEN
-        Error := TRUE;
-        ErrorId := 16#00010003; // crc mismatch
-        Busy := FALSE;
-        state := 70;
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00020003; // discard: crc mismatch
+        rxBufLen := 0;
+        state := 40;
         RETURN;
     END_IF
 
     // Basic header check
     IF rxBuf[0] <> SlaveId THEN
-        Error := TRUE;
-        ErrorId := 16#00010004; // wrong slave id
-        Busy := FALSE;
-        state := 70;
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00020004; // discard: wrong slave id
+        rxBufLen := 0;
+        state := 40;
         RETURN;
     END_IF
 
@@ -251,10 +257,10 @@ CASE state OF
         byteCount := rxBuf[2];
         expectedLen := 5 + byteCount;
         IF rxBufLen <> expectedLen THEN
-            Error := TRUE;
-            ErrorId := 16#00010006; // length mismatch
-            Busy := FALSE;
-            state := 70;
+            RxDiscardCount := RxDiscardCount + 1;
+            LastDiscardId := 16#00020006; // discard: length mismatch
+            rxBufLen := 0;
+            state := 40;
             RETURN;
         END_IF
 
@@ -269,10 +275,10 @@ CASE state OF
     ELSE
         // Write responses are fixed 8 bytes
         IF rxBufLen <> 8 THEN
-            Error := TRUE;
-            ErrorId := 16#00010007; // write response length mismatch
-            Busy := FALSE;
-            state := 70;
+            RxDiscardCount := RxDiscardCount + 1;
+            LastDiscardId := 16#00020007; // discard: write response length mismatch
+            rxBufLen := 0;
+            state := 40;
             RETURN;
         END_IF
     END_IF

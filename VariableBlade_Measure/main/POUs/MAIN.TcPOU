@@ -29,6 +29,8 @@ fbNimServo(
     TargetVelocity := GVL_NimServo.TargetVelocity,
     WordSwap32 := GVL_NimServo.WordSwap32,
     TestForceVelocityWrite := GVL_NimServo.TestForceVelocityWrite,
+    ExtendedPoll := GVL_NimServo.ExtendedPoll,
+    ApplyVmConfig := GVL_NimServo.ApplyVmConfig,
     VmSpeedMinRpm := GVL_NimServo.VmSpeedMinRpm,
     VmSpeedMaxRpm := GVL_NimServo.VmSpeedMaxRpm,
     VmAccelRpm := GVL_NimServo.VmAccelRpm,
