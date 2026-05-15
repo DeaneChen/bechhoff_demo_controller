@@ -17,13 +17,25 @@ namespace PcHostGUI.ViewModels
         private readonly SynchronizationContext _ui;
 
         private CancellationTokenSource _logCts;
+        private bool _pd33StartedByPanel;
+        private bool _loggerStartedByPanel;
         private string _status = "Idle";
+
+        private bool _usePd33;
+        private bool _useVibration;
+        private bool _usePressure;
+        private bool _useTorque;
+        private bool _useValves;
 
         private bool _valveEnable;
         private bool _valve1;
         private bool _valve2;
         private bool _valve3;
         private bool _valve4;
+        private bool _brakeValve1 = true;
+        private bool _brakeValve2 = true;
+        private bool _brakeValve3;
+        private bool _brakeValve4;
 
         private bool _loggerEnable;
         private uint _loggerHead;
@@ -39,12 +51,14 @@ namespace PcHostGUI.ViewModels
             _appToken = appToken;
             _ui = SynchronizationContext.Current ?? new SynchronizationContext();
 
-            ApplyValveCommand = new AsyncRelayCommand(ApplyValveAsync, () => _plc.IsConnected);
+            ApplyValveCommand = new AsyncRelayCommand(ApplyValveAsync, CanControlValves);
             RefreshValveCommand = new AsyncRelayCommand(RefreshValveAsync, () => _plc.IsConnected);
+            BrakeCommand = new AsyncRelayCommand(BrakeAsync, CanControlValves);
+            ReleaseCommand = new AsyncRelayCommand(ReleaseAsync, CanControlValves);
+            LockCommand = new AsyncRelayCommand(LockAsync, CanControlValves);
 
-            StartAllCommand = new AsyncRelayCommand(StartAllAsync, () => _plc.IsConnected && _logCts == null);
-            StopAllCommand = new AsyncRelayCommand(StopAllAsync, () => _plc.IsConnected && _logCts != null);
-            ResetLoggerCommand = new AsyncRelayCommand(ResetLoggerAsync, () => _plc.IsConnected);
+            ToggleRecordingCommand = new AsyncRelayCommand(ToggleRecordingAsync, () => _plc.IsConnected);
+            ResetLoggerCommand = new AsyncRelayCommand(ResetLoggerAsync, () => _plc.IsConnected && !LoggerEnable);
         }
 
         public string Status
@@ -53,10 +67,40 @@ namespace PcHostGUI.ViewModels
             private set => SetProperty(ref _status, value);
         }
 
+        public bool UsePd33
+        {
+            get => _usePd33;
+            set => SetProperty(ref _usePd33, value);
+        }
+
+        public bool UseVibration
+        {
+            get => _useVibration;
+            set => SetProperty(ref _useVibration, value);
+        }
+
+        public bool UsePressure
+        {
+            get => _usePressure;
+            set => SetProperty(ref _usePressure, value);
+        }
+
+        public bool UseTorque
+        {
+            get => _useTorque;
+            set => SetProperty(ref _useTorque, value);
+        }
+
+        public bool UseValves
+        {
+            get => _useValves;
+            set => SetProperty(ref _useValves, value);
+        }
+
         public bool ValveEnable
         {
             get => _valveEnable;
-            set => SetProperty(ref _valveEnable, value);
+            private set => SetProperty(ref _valveEnable, value);
         }
 
         public bool Valve1 { get => _valve1; set => SetProperty(ref _valve1, value); }
@@ -64,12 +108,24 @@ namespace PcHostGUI.ViewModels
         public bool Valve3 { get => _valve3; set => SetProperty(ref _valve3, value); }
         public bool Valve4 { get => _valve4; set => SetProperty(ref _valve4, value); }
 
+        public bool BrakeValve1 { get => _brakeValve1; set => SetProperty(ref _brakeValve1, value); }
+        public bool BrakeValve2 { get => _brakeValve2; set => SetProperty(ref _brakeValve2, value); }
+        public bool BrakeValve3 { get => _brakeValve3; set => SetProperty(ref _brakeValve3, value); }
+        public bool BrakeValve4 { get => _brakeValve4; set => SetProperty(ref _brakeValve4, value); }
+
         public bool LoggerEnable
         {
             get => _loggerEnable;
-            private set => SetProperty(ref _loggerEnable, value);
+            private set
+            {
+                if (SetProperty(ref _loggerEnable, value))
+                {
+                    OnPropertyChanged(nameof(RecordingButtonText));
+                }
+            }
         }
 
+        public string RecordingButtonText => LoggerEnable ? "停止记录" : "开始记录";
         public uint LoggerHead { get => _loggerHead; private set => SetProperty(ref _loggerHead, value); }
         public uint LoggerTail { get => _loggerTail; private set => SetProperty(ref _loggerTail, value); }
         public uint LoggerOverrun { get => _loggerOverrun; private set => SetProperty(ref _loggerOverrun, value); }
@@ -88,26 +144,60 @@ namespace PcHostGUI.ViewModels
 
         public AsyncRelayCommand ApplyValveCommand { get; }
         public AsyncRelayCommand RefreshValveCommand { get; }
-        public AsyncRelayCommand StartAllCommand { get; }
-        public AsyncRelayCommand StopAllCommand { get; }
+        public AsyncRelayCommand BrakeCommand { get; }
+        public AsyncRelayCommand ReleaseCommand { get; }
+        public AsyncRelayCommand LockCommand { get; }
+        public AsyncRelayCommand ToggleRecordingCommand { get; }
         public AsyncRelayCommand ResetLoggerCommand { get; }
 
+        private bool CanControlValves()
+        {
+            return _plc.IsConnected && UseValves;
+        }
+
         private async Task ApplyValveAsync()
+        {
+            await WriteValvesAsync(Valve1, Valve2, Valve3, Valve4, true, "Manual valve pattern applied.").ConfigureAwait(false);
+        }
+
+        private async Task BrakeAsync()
+        {
+            await WriteValvesAsync(BrakeValve1, BrakeValve2, BrakeValve3, BrakeValve4, true, "Brake valve pattern applied.").ConfigureAwait(false);
+        }
+
+        private async Task ReleaseAsync()
+        {
+            await WriteValvesAsync(!BrakeValve1, !BrakeValve2, !BrakeValve3, !BrakeValve4, true, "Release valve pattern applied.").ConfigureAwait(false);
+        }
+
+        private async Task LockAsync()
+        {
+            await WriteValvesAsync(false, false, false, false, false, "Locked: all valve outputs OFF.").ConfigureAwait(false);
+        }
+
+        private async Task WriteValvesAsync(bool valve1, bool valve2, bool valve3, bool valve4, bool enable, string message)
         {
             var ct = _appToken;
             try
             {
-                await _plc.WriteAsync("GVL_ValveIO.Enable", ValveEnable, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_ValveIO.Valve1_Cmd", Valve1, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_ValveIO.Valve2_Cmd", Valve2, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_ValveIO.Valve3_Cmd", Valve3, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_ValveIO.Valve4_Cmd", Valve4, ct).ConfigureAwait(false);
-                _log("INFO", "Valve outputs applied.");
+                if (enable)
+                {
+                    await _plc.WriteAsync("GVL_ValveIO.Enable", true, ct).ConfigureAwait(false);
+                }
+                await _plc.WriteAsync("GVL_ValveIO.Valve1_Cmd", valve1, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_ValveIO.Valve2_Cmd", valve2, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_ValveIO.Valve3_Cmd", valve3, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_ValveIO.Valve4_Cmd", valve4, ct).ConfigureAwait(false);
+                if (!enable)
+                {
+                    await _plc.WriteAsync("GVL_ValveIO.Enable", false, ct).ConfigureAwait(false);
+                }
+                _log("INFO", message);
                 await RefreshValveAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _log("ERROR", "Apply valves failed: " + ex.GetType().Name + ": " + ex.Message);
+                _log("ERROR", "Valve write failed: " + ex.GetType().Name + ": " + ex.Message);
             }
         }
 
@@ -131,9 +221,9 @@ namespace PcHostGUI.ViewModels
                     Valve4 = v4;
                 }, null);
             }
-            catch
+            catch (Exception ex)
             {
-                // ignore
+                _log("WARN", "Valve refresh failed: " + ex.GetType().Name);
             }
         }
 
@@ -145,6 +235,9 @@ namespace PcHostGUI.ViewModels
                 await _plc.WriteAsync("GVL_DataLogger.Reset", true, ct).ConfigureAwait(false);
                 await Task.Delay(60, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_DataLogger.Reset", false, ct).ConfigureAwait(false);
+                LoggerHead = 0;
+                LoggerTail = 0;
+                LoggerOverrun = 0;
                 _log("INFO", "Logger reset requested.");
             }
             catch (Exception ex)
@@ -153,59 +246,135 @@ namespace PcHostGUI.ViewModels
             }
         }
 
-        private async Task StartAllAsync()
+        private async Task ToggleRecordingAsync()
+        {
+            if (LoggerEnable)
+            {
+                await StopRecordingAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                await StartRecordingAsync().ConfigureAwait(false);
+            }
+        }
+
+        private async Task StartRecordingAsync()
         {
             var ct = _appToken;
             if (_logCts != null) return;
 
+            if (!UsePd33 && !UseVibration && !UsePressure && !UseTorque && !UseValves)
+            {
+                _log("WARN", "No peripherals selected; recording not started.");
+                Status = "No peripherals selected";
+                return;
+            }
+
             try
             {
-                Status = "Starting...";
+                Status = "Starting recording...";
 
-                // Enable PD33 so its values appear in records (no-op if not used)
-                await _plc.WriteAsync("GVL_PD33.Channel", (byte)1, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", true, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_PD33.Enable", true, ct).ConfigureAwait(false);
+                _pd33StartedByPanel = false;
+                _loggerStartedByPanel = false;
+                if (UsePd33)
+                {
+                    await _plc.WriteAsync("GVL_PD33.Channel", (byte)1, ct).ConfigureAwait(false);
+                    await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", true, ct).ConfigureAwait(false);
+                    await _plc.WriteAsync("GVL_PD33.Enable", true, ct).ConfigureAwait(false);
+                    _pd33StartedByPanel = true;
+                }
 
-                // Enable logger
+                if (UseVibration)
+                {
+                    _log("WARN", "Vibration sensor recording is reserved; PLC vibration driver is not implemented yet.");
+                }
+
                 await _plc.WriteAsync("GVL_DataLogger.Enable", true, ct).ConfigureAwait(false);
+                _loggerStartedByPanel = true;
                 LoggerEnable = true;
 
                 _logCts = CancellationTokenSource.CreateLinkedTokenSource(_appToken);
                 _ = Task.Run(() => LogLoopAsync(_logCts.Token), _logCts.Token);
 
-                Status = "Logging";
-                _log("INFO", "Started all acquisition + logging.");
+                Status = "Recording";
+                _log("INFO", "Recording started: " + BuildSelectionText());
             }
             catch (Exception ex)
             {
                 Status = "Start failed";
-                _log("ERROR", "StartAll failed: " + ex.GetType().Name + ": " + ex.Message);
+                _log("ERROR", "Start recording failed: " + ex.GetType().Name + ": " + ex.Message);
+                if (_pd33StartedByPanel)
+                {
+                    try { await _plc.WriteAsync("GVL_PD33.Enable", false, ct).ConfigureAwait(false); } catch { }
+                }
+                if (_loggerStartedByPanel)
+                {
+                    try { await _plc.WriteAsync("GVL_DataLogger.Enable", false, ct).ConfigureAwait(false); } catch { }
+                }
                 try { _logCts?.Cancel(); } catch { }
                 try { _logCts?.Dispose(); } catch { }
                 _logCts = null;
+                _pd33StartedByPanel = false;
+                _loggerStartedByPanel = false;
+                LoggerEnable = false;
             }
         }
 
-        private async Task StopAllAsync()
+        private async Task StopRecordingAsync()
         {
             var ct = _appToken;
             if (_logCts == null) return;
 
-            Status = "Stopping...";
+            Status = "Stopping recording...";
             try { _logCts.Cancel(); } catch { }
             try { _logCts.Dispose(); } catch { }
             _logCts = null;
 
-            try
+            if (_loggerStartedByPanel)
             {
-                await _plc.WriteAsync("GVL_DataLogger.Enable", false, ct).ConfigureAwait(false);
+                try { await _plc.WriteAsync("GVL_DataLogger.Enable", false, ct).ConfigureAwait(false); } catch { }
             }
-            catch { }
+            if (_pd33StartedByPanel)
+            {
+                try { await _plc.WriteAsync("GVL_PD33.Enable", false, ct).ConfigureAwait(false); } catch { }
+            }
+            _pd33StartedByPanel = false;
+            _loggerStartedByPanel = false;
 
             LoggerEnable = false;
             Status = "Stopped";
-            _log("INFO", "Stopped logging.");
+            _log("INFO", "Recording stopped.");
+        }
+
+        public void StopLocalLoops()
+        {
+            try { _logCts?.Cancel(); } catch { }
+            try { _logCts?.Dispose(); } catch { }
+            _logCts = null;
+            LoggerEnable = false;
+            Status = "Stopped";
+        }
+
+        public async Task StopPlcActionsAsync(CancellationToken ct)
+        {
+            StopLocalLoops();
+
+            if (!_plc.IsConnected)
+            {
+                _pd33StartedByPanel = false;
+                return;
+            }
+
+            if (_loggerStartedByPanel)
+            {
+                try { await _plc.WriteAsync("GVL_DataLogger.Enable", false, ct).ConfigureAwait(false); } catch { }
+            }
+            if (_pd33StartedByPanel)
+            {
+                try { await _plc.WriteAsync("GVL_PD33.Enable", false, ct).ConfigureAwait(false); } catch { }
+            }
+            _pd33StartedByPanel = false;
+            _loggerStartedByPanel = false;
         }
 
         private async Task LogLoopAsync(CancellationToken ct)
@@ -218,6 +387,12 @@ namespace PcHostGUI.ViewModels
             byte[] carry = Array.Empty<byte>();
             var cursor = new RingBufferCursor(0);
 
+            bool includePd33 = UsePd33;
+            bool includeVibration = UseVibration;
+            bool includePressure = UsePressure;
+            bool includeTorque = UseTorque;
+            bool includeValves = UseValves;
+
             string path = LogFilePath;
             if (string.IsNullOrWhiteSpace(path)) path = "vbm_log.csv";
             path = Path.GetFullPath(path);
@@ -225,7 +400,7 @@ namespace PcHostGUI.ViewModels
             using (var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read))
             using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
             {
-                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_abs_raw,pd33_rel_raw,valves_bits,flags");
+                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_raw,pd33_mm,vibration_status,valves_bits,flags,selected_devices");
                 writer.Flush();
 
                 while (!ct.IsCancellationRequested)
@@ -235,7 +410,6 @@ namespace PcHostGUI.ViewModels
                         byte[] data = await _plc.ExecuteAsync(c => RingBufferReader.ReadNewBytes(c, headSymbol, bufferSymbol, bufferSize, cursor), ct).ConfigureAwait(false);
                         if (data.Length > 0)
                         {
-                            // tell PLC consumed tail
                             try { await _plc.WriteAsync(tailSymbol, cursor.NextIndex, ct).ConfigureAwait(false); } catch { }
 
                             int totalLen = carry.Length + data.Length;
@@ -244,23 +418,25 @@ namespace PcHostGUI.ViewModels
                             Buffer.BlockCopy(data, 0, merged, carry.Length, data.Length);
 
                             int offset = 0;
-                            while (offset + PcHost.Core.VariableBladeLogRecord.SizeBytes <= merged.Length)
+                            while (offset + VariableBladeLogRecord.SizeBytes <= merged.Length)
                             {
-                                if (PcHost.Core.VariableBladeLogRecord.TryParse(new ReadOnlySpan<byte>(merged, offset, PcHost.Core.VariableBladeLogRecord.SizeBytes), out var rec))
+                                if (VariableBladeLogRecord.TryParse(new ReadOnlySpan<byte>(merged, offset, VariableBladeLogRecord.SizeBytes), out var rec))
                                 {
                                     string ts = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
                                     writer.WriteLine(
                                         ts + "," +
                                         rec.Seq.ToString(CultureInfo.InvariantCulture) + "," +
                                         rec.TimeUs.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.PressureRaw.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.TorqueRaw.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.Pd33AbsRaw.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.Pd33RelRaw.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.ValvesBits.ToString(CultureInfo.InvariantCulture) + "," +
-                                        rec.Flags.ToString(CultureInfo.InvariantCulture)
+                                        Field(includePressure, rec.PressureRaw.ToString(CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeTorque, rec.TorqueRaw.ToString(CultureInfo.InvariantCulture)) + "," +
+                                        Field(includePd33, rec.Pd33AbsRaw.ToString(CultureInfo.InvariantCulture)) + "," +
+                                        Field(includePd33, (rec.Pd33AbsRaw / 1000.0).ToString("F6", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, "not_implemented") + "," +
+                                        Field(includeValves, rec.ValvesBits.ToString(CultureInfo.InvariantCulture)) + "," +
+                                        rec.Flags.ToString(CultureInfo.InvariantCulture) + "," +
+                                        BuildSelectionText(includePd33, includeVibration, includePressure, includeTorque, includeValves)
                                     );
-                                    offset += PcHost.Core.VariableBladeLogRecord.SizeBytes;
+                                    offset += VariableBladeLogRecord.SizeBytes;
                                 }
                                 else
                                 {
@@ -282,7 +458,6 @@ namespace PcHostGUI.ViewModels
                             writer.Flush();
                         }
 
-                        // update basic stats
                         uint head = await _plc.ReadAsync<uint>("GVL_DataLogger.Head", ct).ConfigureAwait(false);
                         uint tail = await _plc.ReadAsync<uint>("GVL_DataLogger.Tail", ct).ConfigureAwait(false);
                         uint ov = await _plc.ReadAsync<uint>("GVL_DataLogger.OverrunCount", ct).ConfigureAwait(false);
@@ -304,11 +479,37 @@ namespace PcHostGUI.ViewModels
             }
         }
 
+        private string BuildSelectionText()
+        {
+            return BuildSelectionText(UsePd33, UseVibration, UsePressure, UseTorque, UseValves);
+        }
+
+        private static string BuildSelectionText(bool pd33, bool vibration, bool pressure, bool torque, bool valves)
+        {
+            var sb = new StringBuilder();
+            AppendSelected(sb, pd33, "pd33");
+            AppendSelected(sb, vibration, "vibration");
+            AppendSelected(sb, pressure, "pressure");
+            AppendSelected(sb, torque, "torque");
+            AppendSelected(sb, valves, "valves");
+            return sb.Length == 0 ? "none" : sb.ToString();
+        }
+
+        private static void AppendSelected(StringBuilder sb, bool selected, string name)
+        {
+            if (!selected) return;
+            if (sb.Length > 0) sb.Append('|');
+            sb.Append(name);
+        }
+
+        private static string Field(bool include, string value)
+        {
+            return include ? value : string.Empty;
+        }
+
         public void Dispose()
         {
-            try { _logCts?.Cancel(); } catch { }
-            try { _logCts?.Dispose(); } catch { }
-            _logCts = null;
+            StopLocalLoops();
         }
     }
 }

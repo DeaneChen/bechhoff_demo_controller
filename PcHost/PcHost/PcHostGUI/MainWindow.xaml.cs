@@ -9,11 +9,6 @@ namespace PcHostGUI
     public partial class MainWindow : Window
     {
         private readonly ControlPanelView _controlPanelView = new ControlPanelView();
-        private readonly OverviewView _overviewView = new OverviewView();
-        private readonly NimServoView _nimServoView = new NimServoView();
-        private readonly Pd33View _pd33View = new Pd33View();
-        private readonly Rs485SensorView _rs485View = new Rs485SensorView();
-        private readonly AnalogSensorView _analogView = new AnalogSensorView();
         private readonly LogsView _logsView = new LogsView();
 
         public MainWindow()
@@ -61,30 +56,6 @@ namespace PcHostGUI
                 case "control":
                     _controlPanelView.DataContext = main.ControlPanel;
                     PageHost.Content = _controlPanelView;
-                    break;
-                case "overview":
-                    _overviewView.DataContext = main;
-                    PageHost.Content = _overviewView;
-                    break;
-                case "motor":
-                    _nimServoView.DataContext = main.NimServo;
-                    PageHost.Content = _nimServoView;
-                    break;
-                case "laser":
-                    _pd33View.DataContext = main.Pd33Laser;
-                    PageHost.Content = _pd33View;
-                    break;
-                case "vibration":
-                    _rs485View.DataContext = main.Vibration;
-                    PageHost.Content = _rs485View;
-                    break;
-                case "pressure":
-                    _analogView.DataContext = main.Pressure;
-                    PageHost.Content = _analogView;
-                    break;
-                case "torque":
-                    _analogView.DataContext = main.Torque;
-                    PageHost.Content = _analogView;
                     break;
                 case "logs":
                     _logsView.DataContext = main;

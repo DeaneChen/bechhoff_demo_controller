@@ -10,58 +10,90 @@
         <Grid Margin="16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
+                <RowDefinition Height="14" />
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="16" />
+                <RowDefinition Height="14" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <TextBlock Text="Control Panel" FontSize="22" FontWeight="SemiBold" />
+            <StackPanel>
+                <TextBlock Text="Control Panel" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="默认连接后不启动任何外设逻辑；勾选外设后，按钮动作或记录动作才会写 PLC。" Margin="0,6,0,0"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+            </StackPanel>
 
             <Border Grid.Row="2" CornerRadius="8" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Padding="14">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="1.15*" />
                         <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="3*" />
+                        <ColumnDefinition Width="1.2*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="1.25*" />
                     </Grid.ColumnDefinitions>
 
                     <StackPanel>
-                        <TextBlock Text="Valve Outputs (EL2034)" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Text="Enable acts as master interlock. When disabled, PLC forces all outputs OFF." Margin="0,6,0,0"
+                        <TextBlock Text="外设选择" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="未勾选时不会启动对应外设。PD33 仅在开始记录且勾选时启用 485 Ch1 轮询。" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
-
-                        <CheckBox Content="Enable valve outputs" IsChecked="{Binding ValveEnable}" Margin="0,12,0,0" />
-
-                        <UniformGrid Columns="2" Margin="0,10,0,0">
-                            <CheckBox Content="Valve 1" IsChecked="{Binding Valve1}" Margin="0,4,20,4" />
-                            <CheckBox Content="Valve 2" IsChecked="{Binding Valve2}" Margin="0,4,0,4" />
-                            <CheckBox Content="Valve 3" IsChecked="{Binding Valve3}" Margin="0,4,20,4" />
-                            <CheckBox Content="Valve 4" IsChecked="{Binding Valve4}" Margin="0,4,0,4" />
-                        </UniformGrid>
-
-                        <WrapPanel Margin="0,12,0,0">
-                            <Button Content="Apply" Command="{Binding ApplyValveCommand}" MinWidth="90" />
-                            <Button Content="Refresh" Command="{Binding RefreshValveCommand}" Margin="8,0,0,0" MinWidth="90" />
-                        </WrapPanel>
+                        <CheckBox Content="PD33 激光传感器（EL6022 Ch1，读 0x003B）" IsChecked="{Binding UsePd33}" Margin="0,4,0,4" />
+                        <CheckBox Content="振动传感器（EL6022 Ch2，暂未实现）" IsChecked="{Binding UseVibration}" Margin="0,4,0,4" />
+                        <CheckBox Content="液压压力（EL3742 Sample 1）" IsChecked="{Binding UsePressure}" Margin="0,4,0,4" />
+                        <CheckBox Content="扭矩（EL3742 Sample 2）" IsChecked="{Binding UseTorque}" Margin="0,4,0,4" />
+                        <CheckBox Content="四路开关阀状态/控制（EL2034）" IsChecked="{Binding UseValves}" Margin="0,4,0,4" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Acquisition + Storage" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding Status}" Margin="0,6,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <TextBlock Text="阀控制" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="先勾选四路开关阀。刹车使用下方模式；释放为该模式取反；锁定强制全部 OFF。" Margin="0,6,0,8"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
 
-                        <TextBlock Text="Log file (CSV)" Margin="0,12,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <TextBlock Text="刹车模式" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <UniformGrid Columns="2" Margin="0,6,0,10">
+                            <CheckBox Content="Valve 1 ON" IsChecked="{Binding BrakeValve1}" Margin="0,3,16,3" />
+                            <CheckBox Content="Valve 2 ON" IsChecked="{Binding BrakeValve2}" Margin="0,3,0,3" />
+                            <CheckBox Content="Valve 3 ON" IsChecked="{Binding BrakeValve3}" Margin="0,3,16,3" />
+                            <CheckBox Content="Valve 4 ON" IsChecked="{Binding BrakeValve4}" Margin="0,3,0,3" />
+                        </UniformGrid>
+
+                        <WrapPanel>
+                            <Button Content="刹车" Command="{Binding BrakeCommand}" MinWidth="80" />
+                            <Button Content="释放" Command="{Binding ReleaseCommand}" Margin="8,0,0,0" MinWidth="80" />
+                            <Button Content="锁定" Command="{Binding LockCommand}" Margin="8,0,0,0" MinWidth="80" />
+                        </WrapPanel>
+
+                        <TextBlock Text="当前回显" Margin="0,14,0,4" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <TextBlock Text="Valve master enable" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <CheckBox Content="PLC Enable" IsChecked="{Binding ValveEnable, Mode=OneWay}" IsHitTestVisible="False" Focusable="False" />
+                        <UniformGrid Columns="2" Margin="0,4,0,0">
+                            <CheckBox Content="Valve 1" IsChecked="{Binding Valve1}" Margin="0,3,16,3" />
+                            <CheckBox Content="Valve 2" IsChecked="{Binding Valve2}" Margin="0,3,0,3" />
+                            <CheckBox Content="Valve 3" IsChecked="{Binding Valve3}" Margin="0,3,16,3" />
+                            <CheckBox Content="Valve 4" IsChecked="{Binding Valve4}" Margin="0,3,0,3" />
+                        </UniformGrid>
+                        <WrapPanel Margin="0,10,0,0">
+                            <Button Content="应用当前勾选" Command="{Binding ApplyValveCommand}" MinWidth="110" />
+                            <Button Content="刷新回显" Command="{Binding RefreshValveCommand}" Margin="8,0,0,0" MinWidth="90" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="CSV 记录" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="记录 PLC 环形缓冲：压力 raw、扭矩 raw、PD33 raw/mm、阀状态；振动列当前写 not_implemented。" Margin="0,6,0,8"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+
+                        <TextBlock Text="CSV 文件" Margin="0,12,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                         <TextBox Text="{Binding LogFilePath, UpdateSourceTrigger=PropertyChanged}" />
 
                         <WrapPanel Margin="0,10,0,0">
-                            <TextBlock Text="Poll ms" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="ADS 拉取周期 ms" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <TextBox Width="80" Text="{Binding PollMs, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" />
-                            <Button Content="Reset Logger" Command="{Binding ResetLoggerCommand}" Margin="12,0,0,0" />
                         </WrapPanel>
 
                         <WrapPanel Margin="0,12,0,0">
-                            <Button Content="Start All" Command="{Binding StartAllCommand}" MinWidth="100" />
-                            <Button Content="Stop" Command="{Binding StopAllCommand}" Margin="8,0,0,0" MinWidth="100" />
+                            <Button Content="{Binding RecordingButtonText}" Command="{Binding ToggleRecordingCommand}" MinWidth="100" />
+                            <Button Content="Reset Logger" Command="{Binding ResetLoggerCommand}" Margin="8,0,0,0" />
                         </WrapPanel>
 
                         <Grid Margin="0,14,0,0">
@@ -77,10 +109,8 @@
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Head" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LoggerHead}" />
-
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Tail" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LoggerTail}" />
-
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Overruns" Margin="0,0,12,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LoggerOverrun}" />
                         </Grid>
@@ -89,10 +119,9 @@
             </Border>
 
             <TextBlock Grid.Row="4"
-                       Text="This panel starts PLC ring-buffer logging (pressure/torque/PD33 + valve state) and continuously saves decoded samples to CSV. Make sure TwinCAT I/O mapping links EL3742 + EL2034 variables."
+                       Text="硬件约定：485 Ch1=PD33，485 Ch2=振动；EL3742 Sample 1=压力，Sample 2=扭矩；EL2034=四路开关阀。"
                        Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
                        TextWrapping="Wrap" />
         </Grid>
     </ScrollViewer>
 </UserControl>
-

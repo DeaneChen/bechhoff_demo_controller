@@ -12,7 +12,7 @@ namespace PcHostGUI.ViewModels
         private readonly CancellationTokenSource _appCts = new CancellationTokenSource();
         private readonly PlcSession _plc = new PlcSession();
 
-        private string _amsNetId = "5.132.153.117.1.1";
+        private string _amsNetId = "5.132.114.206.1.1";
         private int _port = PlcSymbols.DefaultPlcPort;
         private bool _isConnected;
         private string _statusText = "Disconnected";
@@ -22,15 +22,10 @@ namespace PcHostGUI.ViewModels
         {
             Logs = new ObservableCollection<UiLog>();
 
-            NimServo = new NimServoViewModel(_plc, AddLog, _appCts.Token);
-            Pd33Laser = new Pd33ViewModel(_plc, AddLog, _appCts.Token);
-            Vibration = new Rs485SensorViewModel("Vibration", AddLog, _appCts.Token);
-            Pressure = new AnalogSensorViewModel("Pressure", "GVL_AnalogSensors.Pressure_RawCopy", AddLog, _plc, _appCts.Token);
-            Torque = new AnalogSensorViewModel("Torque", "GVL_AnalogSensors.Torque_RawCopy", AddLog, _plc, _appCts.Token);
             ControlPanel = new ControlPanelViewModel(_plc, AddLog, _appCts.Token);
 
             ConnectCommand = new AsyncRelayCommand(ConnectAsync, () => !IsConnected);
-            DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
+            DisconnectCommand = new AsyncRelayCommand(DisconnectAsync, () => IsConnected);
             ClearLogsCommand = new RelayCommand(ClearLogs);
         }
 
@@ -74,15 +69,10 @@ namespace PcHostGUI.ViewModels
 
         public ObservableCollection<UiLog> Logs { get; }
 
-        public NimServoViewModel NimServo { get; }
-        public Pd33ViewModel Pd33Laser { get; }
-        public Rs485SensorViewModel Vibration { get; }
-        public AnalogSensorViewModel Pressure { get; }
-        public AnalogSensorViewModel Torque { get; }
         public ControlPanelViewModel ControlPanel { get; }
 
         public AsyncRelayCommand ConnectCommand { get; }
-        public RelayCommand DisconnectCommand { get; }
+        public AsyncRelayCommand DisconnectCommand { get; }
         public RelayCommand ClearLogsCommand { get; }
 
         private async Task ConnectAsync()
@@ -96,11 +86,7 @@ namespace PcHostGUI.ViewModels
                 await Task.Run(() => _plc.Connect(settings), _appCts.Token).ConfigureAwait(true);
                 IsConnected = true;
                 StatusText = "Connected";
-
-                NimServo.StartPolling();
-                Pd33Laser.StartPolling();
-                Pressure.StartPolling();
-                Torque.StartPolling();
+                AddLog("INFO", "Connected. No device logic is started automatically.");
             }
             catch (Exception ex)
             {
@@ -111,12 +97,16 @@ namespace PcHostGUI.ViewModels
             }
         }
 
-        private void Disconnect()
+        private async Task DisconnectAsync()
         {
-            NimServo.StopPolling();
-            Pd33Laser.StopPolling();
-            Pressure.StopPolling();
-            Torque.StopPolling();
+            try
+            {
+                await ControlPanel.StopPlcActionsAsync(_appCts.Token).ConfigureAwait(true);
+            }
+            catch
+            {
+                ControlPanel.StopLocalLoops();
+            }
 
             _plc.Disconnect();
             IsConnected = false;
@@ -144,10 +134,6 @@ namespace PcHostGUI.ViewModels
         public void Dispose()
         {
             try { _appCts.Cancel(); } catch { }
-            NimServo.Dispose();
-            Pd33Laser.Dispose();
-            Pressure.Dispose();
-            Torque.Dispose();
             ControlPanel.Dispose();
             _plc.Dispose();
             _appCts.Dispose();

@@ -17,7 +17,7 @@
 
         <mwc:NavigationView x:Name="Nav"
                         AlwaysShowHeader="True"
-                        PaneTitle="PcHost"
+                        PaneTitle="VariableBlade"
                         IsBackButtonVisible="Collapsed"
                         IsSettingsVisible="False"
                         PaneDisplayMode="Left"
@@ -26,38 +26,6 @@
             <mwc:NavigationViewItem Content="Control Panel" Tag="control">
                 <mwc:NavigationViewItem.Icon>
                     <mw:SymbolIcon Symbol="Bullets" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItem Content="Overview" Tag="overview">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="Home" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItem Content="Motor (NiMotion)" Tag="motor">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="Play" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItemSeparator />
-            <mwc:NavigationViewItem Content="Laser (PD33)" Tag="laser">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="MapPin" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItem Content="Vibration (RS-485)" Tag="vibration">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="Emoji2" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItemSeparator />
-            <mwc:NavigationViewItem Content="Pressure (Analog)" Tag="pressure">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="ContactInfo" />
-                </mwc:NavigationViewItem.Icon>
-            </mwc:NavigationViewItem>
-            <mwc:NavigationViewItem Content="Torque (Analog)" Tag="torque">
-                <mwc:NavigationViewItem.Icon>
-                    <mw:SymbolIcon Symbol="Contact" />
                 </mwc:NavigationViewItem.Icon>
             </mwc:NavigationViewItem>
             <mwc:NavigationViewItemSeparator />
