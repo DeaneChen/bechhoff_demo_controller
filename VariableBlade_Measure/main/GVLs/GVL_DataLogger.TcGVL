@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_DataLogger" Id="{33d4d6de-2c48-4d5b-bc5d-d0e2d4a3b45b}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      PLC-side ring buffer logger to avoid ADS per-sample reads.
+
+      Design:
+        - MAIN (2ms task) writes a fixed-size record into a byte ring buffer.
+        - PC reads Head and Buffer bytes via ADS and reconstructs records.
+        - If PC is too slow and overrun happens, OverrunCount increments.
+
+      Record layout (little-endian):
+        u32 magic = 0x56424D31 ('VBM1')
+        u32 seq
+        u32 t_us (monotonic from cycle count * 2000us)
+        i16 pressure_raw
+        i16 torque_raw
+        i32 pd33_abs_raw
+        i32 pd33_rel_raw
+        u8  valves (bit0..3)
+        u8  flags (bit0=pd33_comm_ok, bit1=reserved)
+        u16 reserved
+      Total: 28 bytes per record
+    *)
+
+    Enable : BOOL := FALSE;
+    Reset : BOOL := FALSE;
+
+    // Ring buffer state (byte indices)
+    Head : UDINT; // next write index (monotonic, wraps by modulo on read side)
+    Tail : UDINT; // PC should update this as "consumed" index to prevent Overrun
+
+    OverrunCount : UDINT;
+    DropCount : UDINT;
+
+    Seq : UDINT;
+
+    // Constants
+    RecordSize : UDINT := 28;
+    BufferSize : UDINT := 28 * 4096; // 114,688 bytes (~8.2s at 500Hz)
+
+    Buffer : ARRAY [0..(28*4096)-1] OF USINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

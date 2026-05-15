@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using PcHost.Core;
 using PcHostGUI.Infrastructure;
-
 namespace PcHostGUI.ViewModels
 {
     public sealed class MainViewModel : ObservableObject, IDisposable
@@ -24,10 +23,11 @@ namespace PcHostGUI.ViewModels
             Logs = new ObservableCollection<UiLog>();
 
             NimServo = new NimServoViewModel(_plc, AddLog, _appCts.Token);
-            LaserDistance = new Rs485SensorViewModel("Laser", AddLog, _appCts.Token);
+            Pd33Laser = new Pd33ViewModel(_plc, AddLog, _appCts.Token);
             Vibration = new Rs485SensorViewModel("Vibration", AddLog, _appCts.Token);
-            Pressure = new AnalogSensorViewModel("Pressure", "GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy", AddLog, _plc, _appCts.Token);
-            Torque = new AnalogSensorViewModel("Torque", "", AddLog, _plc, _appCts.Token);
+            Pressure = new AnalogSensorViewModel("Pressure", "GVL_AnalogSensors.Pressure_RawCopy", AddLog, _plc, _appCts.Token);
+            Torque = new AnalogSensorViewModel("Torque", "GVL_AnalogSensors.Torque_RawCopy", AddLog, _plc, _appCts.Token);
+            ControlPanel = new ControlPanelViewModel(_plc, AddLog, _appCts.Token);
 
             ConnectCommand = new AsyncRelayCommand(ConnectAsync, () => !IsConnected);
             DisconnectCommand = new RelayCommand(Disconnect, () => IsConnected);
@@ -75,10 +75,11 @@ namespace PcHostGUI.ViewModels
         public ObservableCollection<UiLog> Logs { get; }
 
         public NimServoViewModel NimServo { get; }
-        public Rs485SensorViewModel LaserDistance { get; }
+        public Pd33ViewModel Pd33Laser { get; }
         public Rs485SensorViewModel Vibration { get; }
         public AnalogSensorViewModel Pressure { get; }
         public AnalogSensorViewModel Torque { get; }
+        public ControlPanelViewModel ControlPanel { get; }
 
         public AsyncRelayCommand ConnectCommand { get; }
         public RelayCommand DisconnectCommand { get; }
@@ -97,6 +98,7 @@ namespace PcHostGUI.ViewModels
                 StatusText = "Connected";
 
                 NimServo.StartPolling();
+                Pd33Laser.StartPolling();
                 Pressure.StartPolling();
                 Torque.StartPolling();
             }
@@ -112,6 +114,7 @@ namespace PcHostGUI.ViewModels
         private void Disconnect()
         {
             NimServo.StopPolling();
+            Pd33Laser.StopPolling();
             Pressure.StopPolling();
             Torque.StopPolling();
 
@@ -142,8 +145,10 @@ namespace PcHostGUI.ViewModels
         {
             try { _appCts.Cancel(); } catch { }
             NimServo.Dispose();
+            Pd33Laser.Dispose();
             Pressure.Dispose();
             Torque.Dispose();
+            ControlPanel.Dispose();
             _plc.Dispose();
             _appCts.Dispose();
         }

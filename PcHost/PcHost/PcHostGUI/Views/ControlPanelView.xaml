@@ -1,0 +1,98 @@
+<UserControl x:Class="PcHostGUI.Views.ControlPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650"
+             d:DesignWidth="1100">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="16" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="Control Panel" FontSize="22" FontWeight="SemiBold" />
+
+            <Border Grid.Row="2" CornerRadius="8" BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Padding="14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="3*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="Valve Outputs (EL2034)" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="Enable acts as master interlock. When disabled, PLC forces all outputs OFF." Margin="0,6,0,0"
+                                   Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
+
+                        <CheckBox Content="Enable valve outputs" IsChecked="{Binding ValveEnable}" Margin="0,12,0,0" />
+
+                        <UniformGrid Columns="2" Margin="0,10,0,0">
+                            <CheckBox Content="Valve 1" IsChecked="{Binding Valve1}" Margin="0,4,20,4" />
+                            <CheckBox Content="Valve 2" IsChecked="{Binding Valve2}" Margin="0,4,0,4" />
+                            <CheckBox Content="Valve 3" IsChecked="{Binding Valve3}" Margin="0,4,20,4" />
+                            <CheckBox Content="Valve 4" IsChecked="{Binding Valve4}" Margin="0,4,0,4" />
+                        </UniformGrid>
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Content="Apply" Command="{Binding ApplyValveCommand}" MinWidth="90" />
+                            <Button Content="Refresh" Command="{Binding RefreshValveCommand}" Margin="8,0,0,0" MinWidth="90" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Acquisition + Storage" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding Status}" Margin="0,6,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+
+                        <TextBlock Text="Log file (CSV)" Margin="0,12,0,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                        <TextBox Text="{Binding LogFilePath, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <WrapPanel Margin="0,10,0,0">
+                            <TextBlock Text="Poll ms" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Width="80" Text="{Binding PollMs, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" />
+                            <Button Content="Reset Logger" Command="{Binding ResetLoggerCommand}" Margin="12,0,0,0" />
+                        </WrapPanel>
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Content="Start All" Command="{Binding StartAllCommand}" MinWidth="100" />
+                            <Button Content="Stop" Command="{Binding StopAllCommand}" Margin="8,0,0,0" MinWidth="100" />
+                        </WrapPanel>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Head" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LoggerHead}" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Tail" Margin="0,0,12,6" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LoggerTail}" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Overruns" Margin="0,0,12,0" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LoggerOverrun}" />
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <TextBlock Grid.Row="4"
+                       Text="This panel starts PLC ring-buffer logging (pressure/torque/PD33 + valve state) and continuously saves decoded samples to CSV. Make sure TwinCAT I/O mapping links EL3742 + EL2034 variables."
+                       Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                       TextWrapping="Wrap" />
+        </Grid>
+    </ScrollViewer>
+</UserControl>
+

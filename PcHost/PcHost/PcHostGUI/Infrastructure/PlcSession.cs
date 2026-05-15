@@ -84,6 +84,24 @@ namespace PcHostGUI.Infrastructure
             }
         }
 
+        public async Task<byte[]> ReadBytesAsync(string symbol, int len, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(symbol)) throw new ArgumentException("Symbol is required.", nameof(symbol));
+            if (len < 0) throw new ArgumentOutOfRangeException(nameof(len));
+            ct.ThrowIfCancellationRequested();
+
+            await _gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                EnsureConnected();
+                return _client.ReadBytes(symbol, len);
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
         private void EnsureConnected()
         {
             if (!IsConnected)

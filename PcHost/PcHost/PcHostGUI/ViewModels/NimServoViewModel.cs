@@ -17,6 +17,8 @@ namespace PcHostGUI.ViewModels
         private int _pollErrorStreak;
 
         private bool _enable;
+        private int _channel = 1;
+        private int _slaveId = 1;
         private bool _powerEnable;
         private int _targetVelocity = 200;
         private bool _commOk;
@@ -50,6 +52,18 @@ namespace PcHostGUI.ViewModels
         {
             get => _enable;
             set => SetProperty(ref _enable, value);
+        }
+
+        public int Channel
+        {
+            get => _channel;
+            set => SetProperty(ref _channel, value);
+        }
+
+        public int SlaveId
+        {
+            get => _slaveId;
+            set => SetProperty(ref _slaveId, value);
         }
 
         public bool PowerEnable
@@ -153,6 +167,7 @@ namespace PcHostGUI.ViewModels
 
             _pollCts = CancellationTokenSource.CreateLinkedTokenSource(_appToken);
             _ = Task.Run(() => PollLoopAsync(_pollCts.Token), _pollCts.Token);
+            _ = Task.Run(() => LoadConfigOnceAsync(_pollCts.Token), _pollCts.Token);
         }
 
         public void StopPolling()
@@ -220,6 +235,10 @@ namespace PcHostGUI.ViewModels
             var ct = _appToken;
             try
             {
+                byte ch = (byte)Clamp(Channel, 1, 2);
+                byte id = (byte)Clamp(SlaveId, 1, 247);
+                await _plc.WriteAsync("GVL_NimServo.Channel", ch, ct).ConfigureAwait(true);
+                await _plc.WriteAsync("GVL_NimServo.SlaveId", id, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.ExtendedPoll", ExtendedPoll, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.ApplyVmConfig", ApplyVmConfig, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.Enable", Enable, ct).ConfigureAwait(true);
@@ -271,6 +290,10 @@ namespace PcHostGUI.ViewModels
             var ct = _appToken;
             try
             {
+                byte ch = (byte)Clamp(Channel, 1, 2);
+                byte id = (byte)Clamp(SlaveId, 1, 247);
+                await _plc.WriteAsync("GVL_NimServo.Channel", ch, ct).ConfigureAwait(true);
+                await _plc.WriteAsync("GVL_NimServo.SlaveId", id, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.DesiredMode", (byte)2, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.ExtendedPoll", ExtendedPoll, ct).ConfigureAwait(true);
                 await _plc.WriteAsync("GVL_NimServo.ApplyVmConfig", ApplyVmConfig, ct).ConfigureAwait(true);
@@ -303,6 +326,41 @@ namespace PcHostGUI.ViewModels
             StopPolling();
         }
 
+        private async Task LoadConfigOnceAsync(CancellationToken ct)
+        {
+            try
+            {
+                var cfg = await _plc.ExecuteAsync(c =>
+                {
+                    return new ConfigSnapshot
+                    {
+                        Enable = c.ReadSymbol<bool>("GVL_NimServo.Enable"),
+                        Channel = c.ReadSymbol<byte>("GVL_NimServo.Channel"),
+                        SlaveId = c.ReadSymbol<byte>("GVL_NimServo.SlaveId"),
+                        PowerEnable = c.ReadSymbol<bool>("GVL_NimServo.PowerEnable"),
+                        ExtendedPoll = c.ReadSymbol<bool>("GVL_NimServo.ExtendedPoll"),
+                        ApplyVmConfig = c.ReadSymbol<bool>("GVL_NimServo.ApplyVmConfig"),
+                        TargetVelocity = c.ReadSymbol<int>("GVL_NimServo.TargetVelocity"),
+                    };
+                }, ct).ConfigureAwait(false);
+
+                _ui.Post(_ =>
+                {
+                    Enable = cfg.Enable;
+                    Channel = cfg.Channel;
+                    SlaveId = cfg.SlaveId;
+                    PowerEnable = cfg.PowerEnable;
+                    ExtendedPoll = cfg.ExtendedPoll;
+                    ApplyVmConfig = cfg.ApplyVmConfig;
+                    TargetVelocity = cfg.TargetVelocity;
+                }, null);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
         private struct Snapshot
         {
             public bool CommOk;
@@ -315,6 +373,24 @@ namespace PcHostGUI.ViewModels
             public short VmTargetEffRpm;
             public ushort DcBusVoltage;
             public short ModuleTemp;
+        }
+
+        private struct ConfigSnapshot
+        {
+            public bool Enable;
+            public byte Channel;
+            public byte SlaveId;
+            public bool PowerEnable;
+            public bool ExtendedPoll;
+            public bool ApplyVmConfig;
+            public int TargetVelocity;
+        }
+
+        private static int Clamp(int v, int min, int max)
+        {
+            if (v < min) return min;
+            if (v > max) return max;
+            return v;
         }
     }
 }

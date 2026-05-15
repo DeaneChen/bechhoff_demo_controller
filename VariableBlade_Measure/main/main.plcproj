@@ -36,6 +36,18 @@
     <Compile Include="GVLs\GVL_NimServo.TcGVL">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="GVLs\GVL_PD33.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GVLs\GVL_ValveIO.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GVLs\GVL_AnalogSensors.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="GVLs\GVL_DataLogger.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="POUs\F_ModbusCrc16.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -46,6 +58,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\FB_NimServo.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_PD33.TcPOU">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

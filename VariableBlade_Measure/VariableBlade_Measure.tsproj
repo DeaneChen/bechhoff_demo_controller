@@ -64,7 +64,7 @@
 		<ImageData Id="1004">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ff808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff</ImageData>
 		<ImageData Id="1005">424db6030000000000003600000028000000100000000e000000010020000000000080030000c40e0000c40e00000000000000000000ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ff808080ff808080ff808080ff808080ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ff000000ffc0c0c0ff000000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ff00ffffffc0c0c0ff00ffffff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ffc0c0c0ffc0c0c0ffc0c0c0ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ff000000ffc0c0c0ff000000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ffff0000ffc0c0c0ffff0000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ffc0c0c0ffc0c0c0ffc0c0c0ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ff000000ffc0c0c0ff000000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ffc0c0c0ff0000ffffc0c0c0ff0000ffff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff9c9c9cff242424ff9c9c9cffe0e0e0ffc0c0c0ffc0c0c0ffc0c0c0ffc0c0c0ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ffe0e0e0ffc0c0c0ff000000ffc0c0c0ff000000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ffc6c6c6ff242424ffc6c6c6ffe0e0e0ffc0c0c0ffc0c0c0ffc0c0c0ffc0c0c0ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ff242424ffe0e0e0ff242424ffe0e0e0ffc0c0c0ff008000ffc0c0c0ff008000ff808080ffff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00e0e0e0ffc6c6c6ff242424ffc6c6c6ffe0e0e0ffc0c0c0ffc0c0c0ffc0c0c0ffc0c0c0ff808080ffff00ff00ff00ff00</ImageData>
 	</ImageDatas>
-	<Project ProjectGUID="{1D3BD707-DF52-451D-9CB6-31C0255D2A84}" TargetNetId="5.132.153.117.1.1" Target64Bit="true" ShowHideConfigurations="#x6">
+	<Project ProjectGUID="{1D3BD707-DF52-451D-9CB6-31C0255D2A84}" Target64Bit="true" ShowHideConfigurations="#x6">
 		<System>
 			<Tasks>
 				<Task Id="3" Priority="20" CycleTime="20000" AmsPort="350" AdtTasks="true">
@@ -74,7 +74,7 @@
 		</System>
 		<Plc>
 			<Project GUID="{09CF9BB9-1956-4E4C-BB5A-830DBDAE1DA0}" Name="main" PrjFilePath="main\main.plcproj" TmcFilePath="main\main.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e" SymbolicMapping="true">
-				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="main\main.tmc" TmcHash="{BC49A2D1-D9FE-41EB-E95A-0333D5C8318A}">
+				<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" TmcPath="main\main.tmc" TmcHash="{66440733-256E-3C92-4209-FB6BBA07BCC1}">
 					<Name>main Instance</Name>
 					<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
 					<Vars VarGrpType="1">
@@ -151,7 +151,7 @@
 			</Project>
 		</Plc>
 		<Io>
-			<Device Id="1" DevType="111" DevFlags="#x0003" AmsPort="28673" AmsNetId="5.132.153.117.2.1" RemoteName="Device 1 (EtherCAT)" InfoImageId="2">
+			<Device Id="1" DevType="111" DevFlags="#x0003" AmsPort="28673" AmsNetId="172.24.183.94.2.1" RemoteName="Device 1 (EtherCAT)" InfoImageId="2">
 				<Name>Device 1 (EtherCAT)</Name>
 				<AddressInfo>
 					<Ccat>
@@ -2279,6 +2279,14 @@ Bit1: Value smaller than Limit1]]></Comment>
 		<OwnerA Name="TIPC^main^main Instance">
 			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 4 (EL3742)">
 				<Link VarA="PlcTask Inputs^GVL_PcDemo.EL3742_Ch2_Sample0_Raw" VarB="Ch2 Sample 0^Ch2 Value"/>
+				<Link VarA="PlcTask Inputs^GVL_AnalogSensors.Pressure_Raw" VarB="Ch2 Sample 0^Ch2 Value"/>
+				<Link VarA="PlcTask Inputs^GVL_AnalogSensors.Torque_Raw" VarB="Ch1 Sample 0^Ch1 Value"/>
+			</OwnerB>
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 3 (EL2034)">
+				<Link VarA="PlcTask Outputs^GVL_ValveIO.Valve1_Cmd" VarB="Channel 1^Output"/>
+				<Link VarA="PlcTask Outputs^GVL_ValveIO.Valve2_Cmd" VarB="Channel 2^Output"/>
+				<Link VarA="PlcTask Outputs^GVL_ValveIO.Valve3_Cmd" VarB="Channel 3^Output"/>
+				<Link VarA="PlcTask Outputs^GVL_ValveIO.Valve4_Cmd" VarB="Channel 4^Output"/>
 			</OwnerB>
 			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 7 (EK1200)^Term 6 (EL6022)">
 				<Link VarA="PlcTask Inputs^GVL_EL6022_IO.EL6022_Ch1_DataIn" VarB="COM Inputs Channel 1^Data In 0"/>

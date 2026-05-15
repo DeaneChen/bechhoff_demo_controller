@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_AnalogSensors" Id="{c62b5b9a-920a-4a43-b7c8-52adf2c9e0d0}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      Analog current sampling (EL3742 2Ch 0-20mA) placeholders.
+
+      Map in TwinCAT I/O mapping:
+        EL3742 -> Ch2 Sample 0 -> Ch2 Value => Pressure_Raw
+        EL3742 -> Ch1 Sample 0 -> Ch1 Value => Torque_Raw
+
+      Raw type follows EL3742 PDO type (INT16).
+    *)
+
+    Pressure_Raw AT %I* : INT;
+    Torque_Raw AT %I* : INT;
+
+    // PLC-side copies for ADS reads / snapshot.
+    Pressure_RawCopy : INT;
+    Torque_RawCopy : INT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>
+

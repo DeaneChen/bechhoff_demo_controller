@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using System.Threading;
 using PcHost.Core;
 
@@ -541,6 +542,157 @@ namespace PcHostConsole
                     return 0;
                 }
 
+                if (string.Equals(command, "vbm-log", StringComparison.OrdinalIgnoreCase))
+                {
+                    // VariableBlade_Measure: start PLC ring logger + dump + decode to CSV
+                    string outCsv = null;
+                    int pollMs = 20;
+                    bool reset = false;
+                    bool enablePd33 = true;
+
+                    int i = index + 1;
+                    while (i < args.Length)
+                    {
+                        string k = args[i];
+                        if (string.Equals(k, "--out", StringComparison.OrdinalIgnoreCase))
+                        {
+                            outCsv = RequireArg(args, ref i, "--out");
+                        }
+                        else if (string.Equals(k, "--poll-ms", StringComparison.OrdinalIgnoreCase))
+                        {
+                            pollMs = int.Parse(RequireArg(args, ref i, "--poll-ms"), CultureInfo.InvariantCulture);
+                        }
+                        else if (string.Equals(k, "--reset", StringComparison.OrdinalIgnoreCase))
+                        {
+                            reset = true;
+                        }
+                        else if (string.Equals(k, "--no-pd33", StringComparison.OrdinalIgnoreCase))
+                        {
+                            enablePd33 = false;
+                        }
+                        else
+                        {
+                            Console.Error.WriteLine("Unknown vbm-log option: " + k);
+                            return 2;
+                        }
+
+                        i++;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(outCsv))
+                    {
+                        Console.Error.WriteLine("Usage: vbm-log --out file.csv [--poll-ms 20] [--reset] [--no-pd33]");
+                        return 2;
+                    }
+
+                    string headSymbol = "GVL_DataLogger.Head";
+                    string tailSymbol = "GVL_DataLogger.Tail";
+                    string bufferSymbol = "GVL_DataLogger.Buffer";
+                    int bufferSize = 28 * 4096;
+
+                    Console.WriteLine("Connecting to " + amsNetId + ":" + port);
+                    Console.WriteLine("Logging to: " + Path.GetFullPath(outCsv));
+                    Console.WriteLine("Press Ctrl+C to stop.");
+
+                    var cts = new CancellationTokenSource();
+                    Console.CancelKeyPress += (s, e) =>
+                    {
+                        e.Cancel = true;
+                        cts.Cancel();
+                    };
+
+                    using (var plc = new AdsPlcClient())
+                    using (var fs = new FileStream(outCsv, FileMode.Append, FileAccess.Write, FileShare.Read))
+                    using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
+                    {
+                        plc.Connect(settings);
+
+                        // optional PD33 enable (so it appears in records)
+                        if (enablePd33)
+                        {
+                            try { plc.WriteSymbol("GVL_PD33.Enable", true); } catch { }
+                        }
+
+                        if (reset)
+                        {
+                            plc.WriteSymbol("GVL_DataLogger.Reset", true);
+                            Thread.Sleep(50);
+                            plc.WriteSymbol("GVL_DataLogger.Reset", false);
+                        }
+
+                        plc.WriteSymbol("GVL_DataLogger.Enable", true);
+
+                        // CSV header
+                        writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_abs_raw,pd33_rel_raw,valves_bits,flags");
+                        writer.Flush();
+
+                        var cursor = new RingBufferCursor(0);
+                        byte[] carry = Array.Empty<byte>();
+
+                        while (!cts.IsCancellationRequested)
+                        {
+                            byte[] data = RingBufferReader.ReadNewBytes(plc, headSymbol, bufferSymbol, bufferSize, cursor);
+                            if (data.Length > 0)
+                            {
+                                // Tell PLC we've consumed up to cursor.NextIndex to avoid overrun
+                                try { plc.WriteSymbol(tailSymbol, cursor.NextIndex); } catch { }
+
+                                // parse records
+                                int totalLen = carry.Length + data.Length;
+                                byte[] merged = new byte[totalLen];
+                                Buffer.BlockCopy(carry, 0, merged, 0, carry.Length);
+                                Buffer.BlockCopy(data, 0, merged, carry.Length, data.Length);
+
+                                int offset = 0;
+                                while (offset + VariableBladeLogRecord.SizeBytes <= merged.Length)
+                                {
+                                    if (VariableBladeLogRecord.TryParse(new ReadOnlySpan<byte>(merged, offset, VariableBladeLogRecord.SizeBytes), out var rec))
+                                    {
+                                        string ts = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+                                        writer.WriteLine(
+                                            ts + "," +
+                                            rec.Seq.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.TimeUs.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.PressureRaw.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.TorqueRaw.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.Pd33AbsRaw.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.Pd33RelRaw.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.ValvesBits.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.Flags.ToString(CultureInfo.InvariantCulture)
+                                        );
+                                        offset += VariableBladeLogRecord.SizeBytes;
+                                    }
+                                    else
+                                    {
+                                        // resync: advance by 1 byte until magic aligns
+                                        offset += 1;
+                                    }
+                                }
+
+                                int remaining = merged.Length - offset;
+                                if (remaining > 0)
+                                {
+                                    carry = new byte[remaining];
+                                    Buffer.BlockCopy(merged, offset, carry, 0, remaining);
+                                }
+                                else
+                                {
+                                    carry = Array.Empty<byte>();
+                                }
+
+                                writer.Flush();
+                            }
+
+                            Thread.Sleep(pollMs < 5 ? 5 : pollMs);
+                        }
+
+                        // best-effort stop
+                        try { plc.WriteSymbol("GVL_DataLogger.Enable", false); } catch { }
+                    }
+
+                    return 0;
+                }
+
                 if (string.Equals(command, "nimservo-start-vm", StringComparison.OrdinalIgnoreCase))
                 {
                     int? ch = null;
@@ -1027,6 +1179,63 @@ namespace PcHostConsole
                     }
                 }
 
+                if (string.Equals(command, "pd33-dump", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        bool enable = plc.ReadSymbol<bool>("GVL_PD33.Enable");
+                        byte channel = plc.ReadSymbol<byte>("GVL_PD33.Channel");
+                        byte slaveId = plc.ReadSymbol<byte>("GVL_PD33.SlaveId");
+                        bool wordSwap32 = plc.ReadSymbol<bool>("GVL_PD33.WordSwap32");
+
+                        bool channelConflict = plc.ReadSymbol<bool>("GVL_PD33.ChannelConflict");
+                        bool busy = plc.ReadSymbol<bool>("GVL_PD33.Busy");
+                        bool portReady = plc.ReadSymbol<bool>("GVL_PD33.PortReady");
+                        bool commOk = plc.ReadSymbol<bool>("GVL_PD33.CommOk");
+                        uint commErrorCount = plc.ReadSymbol<uint>("GVL_PD33.CommErrorCount");
+                        uint lastErrorId = plc.ReadSymbol<uint>("GVL_PD33.LastErrorId");
+                        byte exceptionCode = plc.ReadSymbol<byte>("GVL_PD33.ExceptionCode");
+                        uint rxDiscardCount = plc.ReadSymbol<uint>("GVL_PD33.RxDiscardCount");
+                        uint lastDiscardId = plc.ReadSymbol<uint>("GVL_PD33.LastDiscardId");
+
+                        int absRaw = plc.ReadSymbol<int>("GVL_PD33.AbsRaw");
+                        int relRaw = plc.ReadSymbol<int>("GVL_PD33.RelRaw");
+                        double absMm = plc.ReadSymbol<double>("GVL_PD33.AbsMm");
+                        double relMm = plc.ReadSymbol<double>("GVL_PD33.RelMm");
+                        ushort zeroWord = plc.ReadSymbol<ushort>("GVL_PD33.ZeroWord");
+
+                        byte lastTxLen = plc.ReadSymbol<byte>("GVL_PD33.LastTxLen");
+                        byte[] lastTx = plc.ReadBytes("GVL_PD33.LastTx", 22);
+                        byte lastRxLen = plc.ReadSymbol<byte>("GVL_PD33.LastRxLen");
+                        byte[] lastRx = plc.ReadBytes("GVL_PD33.LastRx", 22);
+
+                        Console.WriteLine("Enable:         " + enable);
+                        Console.WriteLine("Channel:        " + channel.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("SlaveId:        " + slaveId.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("WordSwap32:     " + wordSwap32);
+                        Console.WriteLine("ChannelConflict:" + channelConflict);
+                        Console.WriteLine("Busy:           " + busy);
+                        Console.WriteLine("PortReady:      " + portReady);
+                        Console.WriteLine("CommOk:         " + commOk);
+                        Console.WriteLine("CommErrorCount: " + commErrorCount.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastErrorId:    " + lastErrorId.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("ExceptionCode:  " + exceptionCode.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxDiscardCount: " + rxDiscardCount.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastDiscardId:  " + lastDiscardId.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("AbsMm:          " + absMm.ToString("F4", CultureInfo.InvariantCulture) + " (raw=" + absRaw.ToString(CultureInfo.InvariantCulture) + ")");
+                        Console.WriteLine("RelMm:          " + relMm.ToString("F3", CultureInfo.InvariantCulture) + " (raw=" + relRaw.ToString(CultureInfo.InvariantCulture) + ")");
+                        Console.WriteLine("ZeroWord:       0x" + zeroWord.ToString("X4", CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastTxLen:      " + lastTxLen.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastTx:         " + ToHex(lastTx, lastTxLen));
+                        Console.WriteLine("LastRxLen:      " + lastRxLen.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastRx:         " + ToHex(lastRx, lastRxLen));
+
+                        return 0;
+                    }
+                }
+
                 Console.Error.WriteLine("Unknown command: " + command);
                 PrintHelp();
                 return 2;
@@ -1086,11 +1295,13 @@ namespace PcHostConsole
             Console.WriteLine("  write-i16 <SYMBOL> <VALUE>");
             Console.WriteLine("  watch-i16 <SYMBOL> [--ms 10] [--out file.csv]");
             Console.WriteLine("  ring-dump --head <SYMBOL> --buffer <SYMBOL> --size <BYTES> --out <FILE> [--poll-ms 10]");
+            Console.WriteLine("  vbm-log --out <FILE> [--poll-ms 20] [--reset] [--no-pd33]");
             Console.WriteLine("  nimservo-start-vm [--reset] [--ch 1|2] [--id 1..247] [--rpm 200] [--timeout-ms 8000] [--wait-ms 2000] [--min-actual-rpm 20] [--tolerance-rpm 10] [--apply-config]");
             Console.WriteLine("                 [--min-rpm N] [--max-rpm N] [--accel-rpm N] [--decel-rpm N] [--accel-time-s N] [--decel-time-s N]");
             Console.WriteLine("  nimservo-stop [--disable] [--keep-speed]");
             Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");
             Console.WriteLine("  el6022-dump");
+            Console.WriteLine("  pd33-dump");
             Console.WriteLine();
             Console.WriteLine("Notes:");
             Console.WriteLine("  For 500~2000Hz logging, prefer PLC ring-buffer + PC batch/poll read (ring-dump) over per-sample reads.");

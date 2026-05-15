@@ -6,11 +6,40 @@ VAR
     initCh1Done : BOOL;
     initCh2Done : BOOL;
     fbNimServo : FB_NimServo;
+    fbPd33 : FB_PD33;
+
+    // DataLogger internal (packed ring buffer)
+    logResetLatched : BOOL;
+    rec : ARRAY [0..27] OF USINT;
+    base : UDINT;
+    headMod : UDINT;
+    seqLocal : UDINT;
+    tUs : UDINT;
+    tmpU32 : UDINT;
+    tmpI16 : INT;
+    tmpI32 : DINT;
+    valvesBits : USINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[GVL_PcDemo.MainCycleCounter := GVL_PcDemo.MainCycleCounter + 1;
 GVL_PcDemo.EL3742_Ch2_Sample0_RawCopy := GVL_PcDemo.EL3742_Ch2_Sample0_Raw;
+
+// --- Valve digital outputs (EL2034) ---
+IF NOT GVL_ValveIO.Enable THEN
+    GVL_ValveIO.Valve1_Cmd := FALSE;
+    GVL_ValveIO.Valve2_Cmd := FALSE;
+    GVL_ValveIO.Valve3_Cmd := FALSE;
+    GVL_ValveIO.Valve4_Cmd := FALSE;
+END_IF
+GVL_ValveIO.Valve1_Fb := GVL_ValveIO.Valve1_Cmd;
+GVL_ValveIO.Valve2_Fb := GVL_ValveIO.Valve2_Cmd;
+GVL_ValveIO.Valve3_Fb := GVL_ValveIO.Valve3_Cmd;
+GVL_ValveIO.Valve4_Fb := GVL_ValveIO.Valve4_Cmd;
+
+// --- Analog sensors (EL3742) ---
+GVL_AnalogSensors.Pressure_RawCopy := GVL_AnalogSensors.Pressure_Raw;
+GVL_AnalogSensors.Torque_RawCopy := GVL_AnalogSensors.Torque_Raw;
 
 // Keep EL6022 debug always updated (used by PcHostConsole el6022-dump)
 GVL_Rs485Demo.Debug_Ch1_Status := GVL_EL6022_IO.EL6022_Ch1_Status;
@@ -98,6 +127,155 @@ GVL_NimServo.LastTxLen := fbNimServo.LastTxLen;
 GVL_NimServo.LastTx := fbNimServo.LastTx;
 GVL_NimServo.LastRxLen := fbNimServo.LastRxLen;
 GVL_NimServo.LastRx := fbNimServo.LastRx;
+
+// --- PD33 laser displacement sensor (Modbus RTU over EL6022 / RS-485) ---
+GVL_PD33.ChannelConflict := GVL_PD33.Enable AND GVL_NimServo.Enable AND (GVL_PD33.Channel = GVL_NimServo.Channel);
+fbPd33(
+    Enable := GVL_PD33.Enable AND (NOT GVL_PD33.ChannelConflict),
+    Channel := GVL_PD33.Channel,
+    SlaveId := GVL_PD33.SlaveId,
+    WordSwap32 := GVL_PD33.WordSwap32,
+    CmdSeq := GVL_PD33.CmdSeq,
+    Cmd := GVL_PD33.Cmd
+);
+GVL_PD33.CmdAckSeq := fbPd33.CmdAckSeq;
+GVL_PD33.Busy := fbPd33.Busy;
+GVL_PD33.PortReady := fbPd33.PortReady;
+GVL_PD33.CommOk := fbPd33.CommOk;
+GVL_PD33.CommErrorCount := fbPd33.CommErrorCount;
+GVL_PD33.LastErrorId := fbPd33.LastErrorId;
+GVL_PD33.ExceptionCode := fbPd33.ExceptionCode;
+GVL_PD33.RxDiscardCount := fbPd33.RxDiscardCount;
+GVL_PD33.LastDiscardId := fbPd33.LastDiscardId;
+GVL_PD33.AbsRaw := fbPd33.AbsRaw;
+GVL_PD33.RelRaw := fbPd33.RelRaw;
+GVL_PD33.AbsMm := fbPd33.AbsMm;
+GVL_PD33.RelMm := fbPd33.RelMm;
+GVL_PD33.ZeroWord := fbPd33.ZeroWord;
+GVL_PD33.LastTxLen := fbPd33.LastTxLen;
+GVL_PD33.LastTx := fbPd33.LastTx;
+GVL_PD33.LastRxLen := fbPd33.LastRxLen;
+GVL_PD33.LastRx := fbPd33.LastRx;
+
+// --- DataLogger ring buffer (packed bytes) ---
+// Time base: PlcTask cycle is 2000us (see PlcTask.TcTTO). Use cycle counter for monotonic time.
+tUs := ULINT_TO_UDINT(GVL_PcDemo.MainCycleCounter) * 2000;
+
+IF GVL_DataLogger.Reset AND (NOT logResetLatched) THEN
+    logResetLatched := TRUE;
+    GVL_DataLogger.Head := 0;
+    GVL_DataLogger.Tail := 0;
+    GVL_DataLogger.Seq := 0;
+    GVL_DataLogger.OverrunCount := 0;
+    GVL_DataLogger.DropCount := 0;
+ELSIF (NOT GVL_DataLogger.Reset) THEN
+    logResetLatched := FALSE;
+END_IF
+
+IF GVL_DataLogger.Enable THEN
+    // Overrun detection: if head - tail > BufferSize - RecordSize, drop this sample.
+    IF (GVL_DataLogger.Head - GVL_DataLogger.Tail) > (GVL_DataLogger.BufferSize - GVL_DataLogger.RecordSize) THEN
+        GVL_DataLogger.OverrunCount := GVL_DataLogger.OverrunCount + 1;
+    ELSE
+        seqLocal := GVL_DataLogger.Seq;
+
+        // magic 'VBM1' = 0x56424D31
+        rec[0] := 16#31; rec[1] := 16#4D; rec[2] := 16#42; rec[3] := 16#56;
+
+        // seq (u32)
+        tmpU32 := seqLocal;
+        rec[4] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[5] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+        rec[6] := UDINT_TO_USINT(SHR(tmpU32, 16) AND 16#FF);
+        rec[7] := UDINT_TO_USINT(SHR(tmpU32, 24) AND 16#FF);
+
+        // t_us (u32)
+        tmpU32 := tUs;
+        rec[8] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[9] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+        rec[10] := UDINT_TO_USINT(SHR(tmpU32, 16) AND 16#FF);
+        rec[11] := UDINT_TO_USINT(SHR(tmpU32, 24) AND 16#FF);
+
+        // pressure_raw (i16)
+        tmpI16 := GVL_AnalogSensors.Pressure_RawCopy;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[12] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[13] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        // torque_raw (i16)
+        tmpI16 := GVL_AnalogSensors.Torque_RawCopy;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[14] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[15] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        // pd33_abs_raw (i32)
+        tmpI32 := GVL_PD33.AbsRaw;
+        tmpU32 := DINT_TO_UDINT(tmpI32);
+        rec[16] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[17] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+        rec[18] := UDINT_TO_USINT(SHR(tmpU32, 16) AND 16#FF);
+        rec[19] := UDINT_TO_USINT(SHR(tmpU32, 24) AND 16#FF);
+
+        // pd33_rel_raw (i32)
+        tmpI32 := GVL_PD33.RelRaw;
+        tmpU32 := DINT_TO_UDINT(tmpI32);
+        rec[20] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[21] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+        rec[22] := UDINT_TO_USINT(SHR(tmpU32, 16) AND 16#FF);
+        rec[23] := UDINT_TO_USINT(SHR(tmpU32, 24) AND 16#FF);
+
+        // valves bits
+        valvesBits := 0;
+        IF GVL_ValveIO.Valve1_Fb THEN valvesBits := valvesBits OR 16#01; END_IF
+        IF GVL_ValveIO.Valve2_Fb THEN valvesBits := valvesBits OR 16#02; END_IF
+        IF GVL_ValveIO.Valve3_Fb THEN valvesBits := valvesBits OR 16#04; END_IF
+        IF GVL_ValveIO.Valve4_Fb THEN valvesBits := valvesBits OR 16#08; END_IF
+        rec[24] := valvesBits;
+
+        // flags
+        rec[25] := 0;
+        IF GVL_PD33.CommOk THEN rec[25] := rec[25] OR 16#01; END_IF
+
+        // reserved u16
+        rec[26] := 0;
+        rec[27] := 0;
+
+        // write record into ring (buffer size is multiple of record size)
+        headMod := GVL_DataLogger.Head MOD GVL_DataLogger.BufferSize;
+        base := headMod;
+        GVL_DataLogger.Buffer[base + 0] := rec[0];
+        GVL_DataLogger.Buffer[base + 1] := rec[1];
+        GVL_DataLogger.Buffer[base + 2] := rec[2];
+        GVL_DataLogger.Buffer[base + 3] := rec[3];
+        GVL_DataLogger.Buffer[base + 4] := rec[4];
+        GVL_DataLogger.Buffer[base + 5] := rec[5];
+        GVL_DataLogger.Buffer[base + 6] := rec[6];
+        GVL_DataLogger.Buffer[base + 7] := rec[7];
+        GVL_DataLogger.Buffer[base + 8] := rec[8];
+        GVL_DataLogger.Buffer[base + 9] := rec[9];
+        GVL_DataLogger.Buffer[base + 10] := rec[10];
+        GVL_DataLogger.Buffer[base + 11] := rec[11];
+        GVL_DataLogger.Buffer[base + 12] := rec[12];
+        GVL_DataLogger.Buffer[base + 13] := rec[13];
+        GVL_DataLogger.Buffer[base + 14] := rec[14];
+        GVL_DataLogger.Buffer[base + 15] := rec[15];
+        GVL_DataLogger.Buffer[base + 16] := rec[16];
+        GVL_DataLogger.Buffer[base + 17] := rec[17];
+        GVL_DataLogger.Buffer[base + 18] := rec[18];
+        GVL_DataLogger.Buffer[base + 19] := rec[19];
+        GVL_DataLogger.Buffer[base + 20] := rec[20];
+        GVL_DataLogger.Buffer[base + 21] := rec[21];
+        GVL_DataLogger.Buffer[base + 22] := rec[22];
+        GVL_DataLogger.Buffer[base + 23] := rec[23];
+        GVL_DataLogger.Buffer[base + 24] := rec[24];
+        GVL_DataLogger.Buffer[base + 25] := rec[25];
+        GVL_DataLogger.Buffer[base + 26] := rec[26];
+        GVL_DataLogger.Buffer[base + 27] := rec[27];
+
+        GVL_DataLogger.Head := GVL_DataLogger.Head + GVL_DataLogger.RecordSize;
+        GVL_DataLogger.Seq := GVL_DataLogger.Seq + 1;
+    END_IF
+END_IF
 
 IF (NOT GVL_NimServo.Enable) AND GVL_Rs485Demo.Enable THEN
 // --- EL6022 RS-485 demo loopback (Ch1 <-> Ch2) ---

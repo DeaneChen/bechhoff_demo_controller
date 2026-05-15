@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_ValveIO" Id="{9f0ef887-5ae1-4e7d-8a3d-4879d8e4a5e1}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      Valve digital outputs placeholder.
+
+      Hardware: Term 3 (EL2034) 4Ch. Digital Output.
+
+      Map in TwinCAT I/O mapping:
+        EL2034 -> Channel 1 -> Output  => Valve1_Cmd
+        EL2034 -> Channel 2 -> Output  => Valve2_Cmd
+        EL2034 -> Channel 3 -> Output  => Valve3_Cmd
+        EL2034 -> Channel 4 -> Output  => Valve4_Cmd
+
+      Notes:
+        - Use AT %Q* so the symbol shows up in "Link To..." list.
+        - Valve*_Fb are software feedback mirrors (what PLC currently drives).
+    *)
+
+    Valve1_Cmd AT %Q* : BOOL;
+    Valve2_Cmd AT %Q* : BOOL;
+    Valve3_Cmd AT %Q* : BOOL;
+    Valve4_Cmd AT %Q* : BOOL;
+
+    Valve1_Fb : BOOL;
+    Valve2_Fb : BOOL;
+    Valve3_Fb : BOOL;
+    Valve4_Fb : BOOL;
+
+    // Master enable for all valve outputs (safety interlock).
+    Enable : BOOL := FALSE;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>
+

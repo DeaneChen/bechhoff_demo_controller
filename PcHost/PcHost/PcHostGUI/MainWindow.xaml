@@ -15,7 +15,7 @@
         <vm:MainViewModel />
     </Window.DataContext>
 
-    <mwc:NavigationView x:Name="Nav"
+        <mwc:NavigationView x:Name="Nav"
                         AlwaysShowHeader="True"
                         PaneTitle="PcHost"
                         IsBackButtonVisible="Collapsed"
@@ -23,6 +23,11 @@
                         PaneDisplayMode="Left"
                         SelectionChanged="Nav_OnSelectionChanged">
         <mwc:NavigationView.MenuItems>
+            <mwc:NavigationViewItem Content="Control Panel" Tag="control">
+                <mwc:NavigationViewItem.Icon>
+                    <mw:SymbolIcon Symbol="Bullets" />
+                </mwc:NavigationViewItem.Icon>
+            </mwc:NavigationViewItem>
             <mwc:NavigationViewItem Content="Overview" Tag="overview">
                 <mwc:NavigationViewItem.Icon>
                     <mw:SymbolIcon Symbol="Home" />
@@ -34,7 +39,7 @@
                 </mwc:NavigationViewItem.Icon>
             </mwc:NavigationViewItem>
             <mwc:NavigationViewItemSeparator />
-            <mwc:NavigationViewItem Content="Laser (RS-485)" Tag="laser">
+            <mwc:NavigationViewItem Content="Laser (PD33)" Tag="laser">
                 <mwc:NavigationViewItem.Icon>
                     <mw:SymbolIcon Symbol="MapPin" />
                 </mwc:NavigationViewItem.Icon>
