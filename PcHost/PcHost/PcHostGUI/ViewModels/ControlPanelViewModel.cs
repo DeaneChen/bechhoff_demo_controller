@@ -244,9 +244,9 @@ namespace PcHostGUI.ViewModels
                             Buffer.BlockCopy(data, 0, merged, carry.Length, data.Length);
 
                             int offset = 0;
-                            while (offset + VariableBladeLogRecord.SizeBytes <= merged.Length)
+                            while (offset + PcHost.Core.VariableBladeLogRecord.SizeBytes <= merged.Length)
                             {
-                                if (VariableBladeLogRecord.TryParse(new ReadOnlySpan<byte>(merged, offset, VariableBladeLogRecord.SizeBytes), out var rec))
+                                if (PcHost.Core.VariableBladeLogRecord.TryParse(new ReadOnlySpan<byte>(merged, offset, PcHost.Core.VariableBladeLogRecord.SizeBytes), out var rec))
                                 {
                                     string ts = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture);
                                     writer.WriteLine(
@@ -260,7 +260,7 @@ namespace PcHostGUI.ViewModels
                                         rec.ValvesBits.ToString(CultureInfo.InvariantCulture) + "," +
                                         rec.Flags.ToString(CultureInfo.InvariantCulture)
                                     );
-                                    offset += VariableBladeLogRecord.SizeBytes;
+                                    offset += PcHost.Core.VariableBladeLogRecord.SizeBytes;
                                 }
                                 else
                                 {
