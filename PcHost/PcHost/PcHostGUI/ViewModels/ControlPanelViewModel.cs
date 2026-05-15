@@ -163,6 +163,8 @@ namespace PcHostGUI.ViewModels
                 Status = "Starting...";
 
                 // Enable PD33 so its values appear in records (no-op if not used)
+                await _plc.WriteAsync("GVL_PD33.Channel", (byte)1, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", true, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_PD33.Enable", true, ct).ConfigureAwait(false);
 
                 // Enable logger

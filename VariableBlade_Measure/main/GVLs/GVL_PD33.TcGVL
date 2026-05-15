@@ -8,18 +8,20 @@
       Registers (from manual screenshots):
       - Absolute distance (read): 0x0022, Qty=2 (32-bit, low word first), scale 0.1um => mm = raw / 10000
       - Relative distance (read): 0x0024, Qty=2 (32-bit signed, low word first), scale 1um => mm = raw / 1000
+      - Display distance (read): 0x003B, Qty=2 (32-bit signed, low word first), scale 0.001mm => mm = raw / 1000
       - Zero set/cancel (write): 0x0020, 0x06 write single register
         - Set zero: read current relative distance, write its low word to 0x0020
         - Cancel zero: write 0x0000 to 0x0020
     *)
 
     Enable : BOOL;
-    Channel : USINT := 2; // 1 or 2 (EL6022 channel)
+    Channel : USINT := 1; // 1 or 2 (EL6022 channel)
     SlaveId : USINT := 1; // Modbus address
 
     // PD33 frames shown in the manual interpret 32-bit values as "low word first".
     // Keep this TRUE unless you verify your device uses the opposite order.
     WordSwap32 : BOOL := TRUE;
+    UseDisplayRegister3B : BOOL := TRUE; // TRUE: poll 0x003B display distance (0.001mm); FALSE: poll 0x0022/0x0024
 
     // Command handshake (PC writes Cmd+CmdSeq; PLC sets CmdAckSeq after completion)
     CmdSeq : UDINT;
@@ -38,8 +40,8 @@
     LastDiscardId : UDINT;
 
     // Measurements
-    AbsRaw : DINT; // raw 0.1um units (see manual)
-    RelRaw : DINT; // raw 1um units (signed)
+    AbsRaw : DINT; // raw units depend on UseDisplayRegister3B
+    RelRaw : DINT; // raw units depend on UseDisplayRegister3B
     AbsMm : LREAL; // computed
     RelMm : LREAL; // computed
 

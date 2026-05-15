@@ -17,9 +17,10 @@ namespace PcHostGUI.ViewModels
         private int _pollErrorStreak;
 
         private bool _enable;
-        private int _channel = 2;
+        private int _channel = 1;
         private int _slaveId = 1;
         private bool _wordSwap32 = true;
+        private bool _useDisplayRegister3B = true;
 
         private bool _channelConflict;
         private bool _busy;
@@ -84,6 +85,12 @@ namespace PcHostGUI.ViewModels
         {
             get => _wordSwap32;
             set => SetProperty(ref _wordSwap32, value);
+        }
+
+        public bool UseDisplayRegister3B
+        {
+            get => _useDisplayRegister3B;
+            set => SetProperty(ref _useDisplayRegister3B, value);
         }
 
         public bool ChannelConflict
@@ -268,6 +275,7 @@ namespace PcHostGUI.ViewModels
                 await _plc.WriteAsync("GVL_PD33.Channel", ch, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_PD33.SlaveId", id, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_PD33.WordSwap32", WordSwap32, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", UseDisplayRegister3B, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_PD33.Enable", Enable, ct).ConfigureAwait(false);
                 _log("INFO", "Applied PD33 settings.");
             }
@@ -289,6 +297,7 @@ namespace PcHostGUI.ViewModels
                         Channel = c.ReadSymbol<byte>("GVL_PD33.Channel"),
                         SlaveId = c.ReadSymbol<byte>("GVL_PD33.SlaveId"),
                         WordSwap32 = c.ReadSymbol<bool>("GVL_PD33.WordSwap32"),
+                        UseDisplayRegister3B = c.ReadSymbol<bool>("GVL_PD33.UseDisplayRegister3B"),
                     };
                 }, ct).ConfigureAwait(false);
 
@@ -300,6 +309,7 @@ namespace PcHostGUI.ViewModels
                     _slaveId = cfg.SlaveId;
                     OnPropertyChanged(nameof(SlaveIdInt));
                     WordSwap32 = cfg.WordSwap32;
+                    UseDisplayRegister3B = cfg.UseDisplayRegister3B;
                 }, null);
             }
             catch
@@ -366,6 +376,7 @@ namespace PcHostGUI.ViewModels
             public byte Channel;
             public byte SlaveId;
             public bool WordSwap32;
+            public bool UseDisplayRegister3B;
         }
 
         private static int Clamp(int v, int min, int max)

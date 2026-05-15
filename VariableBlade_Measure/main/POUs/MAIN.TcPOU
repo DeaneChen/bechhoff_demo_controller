@@ -135,6 +135,7 @@ fbPd33(
     Channel := GVL_PD33.Channel,
     SlaveId := GVL_PD33.SlaveId,
     WordSwap32 := GVL_PD33.WordSwap32,
+    UseDisplayRegister3B := GVL_PD33.UseDisplayRegister3B,
     CmdSeq := GVL_PD33.CmdSeq,
     Cmd := GVL_PD33.Cmd
 );

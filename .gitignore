@@ -1,3 +1,19 @@
 # User-specific TwinCAT artifacts
 *.project.~u
 
+# Visual Studio user/cache files
+.vs/
+**/.vs/
+*.suo
+*.user
+
+# .NET build outputs (keep SDK/vendor bin folders trackable)
+PcHost/**/bin/
+PcHost/**/obj/
+
+# TwinCAT generated outputs
+**/_Boot/
+**/_CompileInfo/
+**/*.tmc
+**/*.tclrs
+**/*.tsproj.bak

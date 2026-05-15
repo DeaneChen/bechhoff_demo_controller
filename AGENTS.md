@@ -17,7 +17,8 @@
 - ADS 库：NuGet `Beckhoff.TwinCAT.Ads`
   - 仅安装 NuGet 不等于能连通：PC 侧仍需配置 ADS Router/Route（到目标 PLC 的 AMS Route）。
   - 运行时依赖：请从 `PcHostConsole/bin/Release` 目录运行（确保 `TwinCAT.Ads*.dll` 在同目录）。
-- 目标 PLC 的 AmsNetId 示例：`5.132.153.117.1.1`（CX-849975），PLC 默认端口：`851`。
+- 当前目标 PLC：`CX-8472CE`，AmsNetId：`5.132.114.206.1.1`，IP：`169.254.121.146`，PLC 默认端口：`851`。
+- 当前 PD33 激光位移传感器接在 `EL6022 Channel 1`，PD33 手册默认 RS-485 参数为 `115200, 8N1, Modbus RTU, SlaveId=1`。
 
 ## 高速采集（500–2000Hz）建议
 - 不建议 PC 以 0.5–2ms 周期做“逐点 ADS Read”：Windows 调度抖动 + ADS 往返开销会导致不稳定。

@@ -1189,6 +1189,7 @@ namespace PcHostConsole
                         byte channel = plc.ReadSymbol<byte>("GVL_PD33.Channel");
                         byte slaveId = plc.ReadSymbol<byte>("GVL_PD33.SlaveId");
                         bool wordSwap32 = plc.ReadSymbol<bool>("GVL_PD33.WordSwap32");
+                        bool useDisplayRegister3B = plc.ReadSymbol<bool>("GVL_PD33.UseDisplayRegister3B");
 
                         bool channelConflict = plc.ReadSymbol<bool>("GVL_PD33.ChannelConflict");
                         bool busy = plc.ReadSymbol<bool>("GVL_PD33.Busy");
@@ -1215,6 +1216,7 @@ namespace PcHostConsole
                         Console.WriteLine("Channel:        " + channel.ToString(CultureInfo.InvariantCulture));
                         Console.WriteLine("SlaveId:        " + slaveId.ToString(CultureInfo.InvariantCulture));
                         Console.WriteLine("WordSwap32:     " + wordSwap32);
+                        Console.WriteLine("UseReg3B:       " + useDisplayRegister3B);
                         Console.WriteLine("ChannelConflict:" + channelConflict);
                         Console.WriteLine("Busy:           " + busy);
                         Console.WriteLine("PortReady:      " + portReady);

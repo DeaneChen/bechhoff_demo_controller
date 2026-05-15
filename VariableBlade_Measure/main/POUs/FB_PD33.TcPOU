@@ -7,6 +7,7 @@ VAR_INPUT
     Channel : USINT; // 1 or 2
     SlaveId : USINT; // 1..247
     WordSwap32 : BOOL; // TRUE: low word first (matches PD33 manual examples)
+    UseDisplayRegister3B : BOOL; // TRUE: read 0x003B display distance, unit 0.001mm
 
     CmdSeq : UDINT;
     Cmd : USINT; // 0=None, 1=Zero, 2=CancelZero
@@ -44,7 +45,7 @@ VAR
     mbWData : ARRAY [0..21] OF USINT;
 
     op : USINT;
-    step : USINT; // 0=abs, 1=rel
+    step : USINT; // 0=abs/display, 1=rel
 
     cmdSeqLatched : UDINT;
     cmdLatched : USINT;
@@ -144,7 +145,7 @@ IF mb.Done THEN
     CommOk := TRUE;
 
     CASE op OF
-    1: // ABS read (0x0022, 2 regs)
+    1: // ABS read (0x0022, 2 regs), unit 0.1um
         high := mb.ReadRegs[0];
         low := mb.ReadRegs[1];
         // PD33 manual examples interpret 32-bit values as "low word first".
@@ -158,7 +159,7 @@ IF mb.Done THEN
         AbsMm := DINT_TO_LREAL(AbsRaw) / 10000.0;
         step := 1;
 
-    2: // REL read (0x0024, 2 regs)
+    2: // REL read (0x0024, 2 regs), unit 0.001mm
         high := mb.ReadRegs[0];
         low := mb.ReadRegs[1];
         IF WordSwap32 THEN
@@ -169,6 +170,21 @@ IF mb.Done THEN
         dw := UDINT_TO_DWORD(uTmp);
         RelRaw := DWORD_TO_DINT(dw);
         RelMm := DINT_TO_LREAL(RelRaw) / 1000.0;
+        step := 0;
+
+    3: // Display distance read (0x003B, 2 regs), unit 0.001mm
+        high := mb.ReadRegs[0];
+        low := mb.ReadRegs[1];
+        IF WordSwap32 THEN
+            high := mb.ReadRegs[1];
+            low := mb.ReadRegs[0];
+        END_IF
+        uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
+        dw := UDINT_TO_DWORD(uTmp);
+        AbsRaw := DWORD_TO_DINT(dw);
+        AbsMm := DINT_TO_LREAL(AbsRaw) / 1000.0;
+        RelRaw := AbsRaw;
+        RelMm := AbsMm;
         step := 0;
 
     10: // Command stage: REL read for zero set
@@ -248,8 +264,15 @@ IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
         END_IF
     END_IF
 
-    // Background polling: ABS then REL
-    IF step = 0 THEN
+    // Background polling: display register or ABS/REL pair
+    IF UseDisplayRegister3B THEN
+        mbFunc := 3;
+        mbAddr := 16#003B;
+        mbQty := 2;
+        mbWbc := 0;
+        op := 3;
+        mbReqHold := TRUE;
+    ELSIF step = 0 THEN
         mbFunc := 3;
         mbAddr := 16#0022;
         mbQty := 2;
