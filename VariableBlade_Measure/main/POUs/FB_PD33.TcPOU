@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
   <POU Name="FB_PD33" Id="{b5a62a1d-4ccf-4aa3-9a63-6a8d5fd85b4f}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK FB_PD33
@@ -7,10 +7,10 @@ VAR_INPUT
     Channel : USINT; // 1 or 2
     SlaveId : USINT; // 1..247
     WordSwap32 : BOOL; // TRUE: low word first (matches PD33 manual examples)
-    UseDisplayRegister3B : BOOL; // TRUE: read 0x003B display distance, unit 0.001mm
+    UseDisplayRegister3B : BOOL; // reserved: PD33 now uses passive full-speed output parsing
 
     CmdSeq : UDINT;
-    Cmd : USINT; // 0=None, 1=Zero, 2=CancelZero
+    Cmd : USINT; // reserved in passive mode
 END_VAR
 VAR_OUTPUT
     CmdAckSeq : UDINT;
@@ -36,44 +36,22 @@ VAR_OUTPUT
     LastRx : ARRAY [0..21] OF USINT;
 END_VAR
 VAR
-    mb : FB_ModbusRtuMaster;
-    mbReqHold : BOOL;
-    mbFunc : USINT;
-    mbAddr : UINT;
-    mbQty : USINT;
-    mbWbc : USINT;
-    mbWData : ARRAY [0..21] OF USINT;
-
-    op : USINT;
-    step : USINT; // 0=abs/display, 1=rel
-
-    cmdSeqLatched : UDINT;
-    cmdLatched : USINT;
-    cmdPending : BOOL;
-    cmdStage : USINT; // 0=idle, 1=waiting rel read, 2=waiting write zero/cancel
-    relLowWord : UINT;
-
+    fbPort : FB_EL6022_Port;
+    txData : ARRAY [0..21] OF USINT;
+    rx : ARRAY [0..21] OF USINT;
+    rxLen : USINT;
+    crcRx : WORD;
+    crcCalc : WORD;
     low : UINT;
     high : UINT;
     uTmp : UDINT;
     dw : DWORD;
+    i : USINT;
 END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[IF NOT Enable THEN
-    mbReqHold := FALSE;
-    mbFunc := 0;
-    mbAddr := 0;
-    mbQty := 0;
-    mbWbc := 0;
-    op := 0;
-    step := 0;
-
-    cmdSeqLatched := 0;
-    cmdLatched := 0;
-    cmdPending := FALSE;
-    cmdStage := 0;
-    relLowWord := 0;
+    fbPort(Enable := FALSE, Channel := Channel, TxStart := FALSE, TxLen := 0, TxData := txData);
 
     Busy := FALSE;
     PortReady := FALSE;
@@ -92,206 +70,86 @@ END_VAR
     RETURN;
 END_IF
 
-// Latch a one-shot command
-IF (CmdSeq <> CmdAckSeq) AND (NOT cmdPending) THEN
-    cmdPending := TRUE;
-    cmdSeqLatched := CmdSeq;
-    cmdLatched := Cmd;
-    cmdStage := 0;
+// Passive mode: PD33 is configured for full-speed active output.
+// The PLC only initializes/acknowledges the EL6022 channel and parses received frames.
+fbPort(Enable := TRUE, Channel := Channel, TxStart := FALSE, TxLen := 0, TxData := txData);
+
+Busy := FALSE;
+PortReady := fbPort.Ready;
+ExceptionCode := 0;
+LastTxLen := 0;
+
+IF CmdSeq <> CmdAckSeq THEN
+    // Active zero/cancel writes are intentionally disabled while the sensor is in full-speed output mode.
+    CmdAckSeq := CmdSeq;
 END_IF
 
-// Drive Modbus master
-mb(Enable := Enable,
-   Channel := Channel,
-   SlaveId := SlaveId,
-   Req := mbReqHold,
-   Func := mbFunc,
-   Addr := mbAddr,
-   Quantity := mbQty,
-   WriteByteCount := mbWbc,
-   WriteData := mbWData);
+IF fbPort.RxNew THEN
+    rxLen := fbPort.RxLen;
+    rx := fbPort.RxData;
+    LastRxLen := rxLen;
+    LastRx := rx;
 
-PortReady := mb.PortReady;
-ExceptionCode := mb.ExceptionCode;
-RxDiscardCount := mb.RxDiscardCount;
-LastDiscardId := mb.LastDiscardId;
+    IF rxLen <> 9 THEN
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00030001; // passive discard: unexpected frame length
+        CommOk := FALSE;
+        CommErrorCount := CommErrorCount + 1;
+        LastErrorId := LastDiscardId;
+        RETURN;
+    END_IF
 
-IF mb.Busy THEN
-    // Request accepted by Modbus FB
-    mbReqHold := FALSE;
-END_IF
+    IF rx[0] <> SlaveId THEN
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00030002; // passive discard: wrong slave id
+        CommOk := FALSE;
+        CommErrorCount := CommErrorCount + 1;
+        LastErrorId := LastDiscardId;
+        RETURN;
+    END_IF
 
-Busy := mb.Busy OR cmdPending;
+    IF (rx[1] <> 3) OR (rx[2] <> 4) THEN
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00030003; // passive discard: unexpected function/byte count
+        CommOk := FALSE;
+        CommErrorCount := CommErrorCount + 1;
+        LastErrorId := LastDiscardId;
+        RETURN;
+    END_IF
 
-// Update debug frames (latch last non-empty frames)
-IF mb.TxLen > 0 THEN
-    LastTxLen := mb.TxLen;
-    LastTx := mb.TxFrame;
-END_IF
+    crcRx := USINT_TO_WORD(rx[7]) OR SHL(USINT_TO_WORD(rx[8]), 8);
+    crcCalc := F_ModbusCrc16(rx, 7);
+    IF crcRx <> crcCalc THEN
+        RxDiscardCount := RxDiscardCount + 1;
+        LastDiscardId := 16#00030004; // passive discard: crc mismatch
+        CommOk := FALSE;
+        CommErrorCount := CommErrorCount + 1;
+        LastErrorId := LastDiscardId;
+        RETURN;
+    END_IF
 
-IF mb.RxLen > 0 THEN
-    LastRxLen := mb.RxLen;
-    LastRx := mb.RxFrame;
-END_IF
+    high := SHL(USINT_TO_UINT(rx[3]), 8) OR USINT_TO_UINT(rx[4]);
+    low := SHL(USINT_TO_UINT(rx[5]), 8) OR USINT_TO_UINT(rx[6]);
+    IF WordSwap32 THEN
+        high := SHL(USINT_TO_UINT(rx[5]), 8) OR USINT_TO_UINT(rx[6]);
+        low := SHL(USINT_TO_UINT(rx[3]), 8) OR USINT_TO_UINT(rx[4]);
+    END_IF
 
-IF mb.Error THEN
-    CommOk := FALSE;
-    CommErrorCount := CommErrorCount + 1;
-    LastErrorId := mb.ErrorId;
-    op := 0;
-END_IF
+    uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
+    dw := UDINT_TO_DWORD(uTmp);
+    RelRaw := DWORD_TO_DINT(dw);
+    RelMm := DINT_TO_LREAL(RelRaw) / 1000.0;
+    AbsRaw := RelRaw;
+    AbsMm := RelMm;
 
-IF mb.Done THEN
     CommOk := TRUE;
-
-    CASE op OF
-    1: // ABS read (0x0022, 2 regs), unit 0.1um
-        high := mb.ReadRegs[0];
-        low := mb.ReadRegs[1];
-        // PD33 manual examples interpret 32-bit values as "low word first".
-        IF WordSwap32 THEN
-            high := mb.ReadRegs[1];
-            low := mb.ReadRegs[0];
-        END_IF
-        uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
-        dw := UDINT_TO_DWORD(uTmp);
-        AbsRaw := DWORD_TO_DINT(dw);
-        AbsMm := DINT_TO_LREAL(AbsRaw) / 10000.0;
-        step := 1;
-
-    2: // REL read (0x0024, 2 regs), unit 0.001mm
-        high := mb.ReadRegs[0];
-        low := mb.ReadRegs[1];
-        IF WordSwap32 THEN
-            high := mb.ReadRegs[1];
-            low := mb.ReadRegs[0];
-        END_IF
-        uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
-        dw := UDINT_TO_DWORD(uTmp);
-        RelRaw := DWORD_TO_DINT(dw);
-        RelMm := DINT_TO_LREAL(RelRaw) / 1000.0;
-        step := 0;
-
-    3: // Display distance read (0x003B, 2 regs), unit 0.001mm
-        high := mb.ReadRegs[0];
-        low := mb.ReadRegs[1];
-        IF WordSwap32 THEN
-            high := mb.ReadRegs[1];
-            low := mb.ReadRegs[0];
-        END_IF
-        uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
-        dw := UDINT_TO_DWORD(uTmp);
-        AbsRaw := DWORD_TO_DINT(dw);
-        AbsMm := DINT_TO_LREAL(AbsRaw) / 1000.0;
-        RelRaw := AbsRaw;
-        RelMm := AbsMm;
-        step := 0;
-
-    10: // Command stage: REL read for zero set
-        high := mb.ReadRegs[0];
-        low := mb.ReadRegs[1];
-        IF WordSwap32 THEN
-            high := mb.ReadRegs[1];
-            low := mb.ReadRegs[0];
-        END_IF
-        uTmp := SHL(UINT_TO_UDINT(high), 16) OR UINT_TO_UDINT(low);
-        dw := UDINT_TO_DWORD(uTmp);
-        RelRaw := DWORD_TO_DINT(dw);
-        RelMm := DINT_TO_LREAL(RelRaw) / 1000.0;
-        relLowWord := low;
-        cmdStage := 1;
-
-    11: // Command stage: write zero word done
-        ZeroWord := relLowWord;
-        CmdAckSeq := cmdSeqLatched;
-        cmdPending := FALSE;
-        cmdStage := 0;
-
-    12: // Command stage: cancel zero done
-        ZeroWord := 0;
-        CmdAckSeq := cmdSeqLatched;
-        cmdPending := FALSE;
-        cmdStage := 0;
-
-    ELSE
-        ;
-    END_CASE
-
-    op := 0;
-END_IF
-
-// Schedule next Modbus transaction when idle
-IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
-    // Commands have priority over background polling
-    IF cmdPending THEN
-        IF cmdLatched = 1 THEN
-            // Zero set: read current relative distance then write its low word to 0x0020
-            IF cmdStage = 0 THEN
-                mbFunc := 3;
-                mbAddr := 16#0024;
-                mbQty := 2;
-                mbWbc := 0;
-                op := 10;
-                mbReqHold := TRUE;
-                RETURN;
-            ELSE
-                mbFunc := 6;
-                mbAddr := 16#0020;
-                mbQty := 1;
-                mbWbc := 2;
-                mbWData[0] := WORD_TO_USINT(SHR(UINT_TO_WORD(relLowWord), 8));
-                mbWData[1] := WORD_TO_USINT(UINT_TO_WORD(relLowWord) AND 16#00FF);
-                op := 11;
-                mbReqHold := TRUE;
-                RETURN;
-            END_IF
-        ELSIF cmdLatched = 2 THEN
-            // Cancel zero: write 0
-            mbFunc := 6;
-            mbAddr := 16#0020;
-            mbQty := 1;
-            mbWbc := 2;
-            mbWData[0] := 0;
-            mbWData[1] := 0;
-            op := 12;
-            mbReqHold := TRUE;
-            RETURN;
-        ELSE
-            // Unknown cmd: ack and clear
-            CmdAckSeq := cmdSeqLatched;
-            cmdPending := FALSE;
-            cmdStage := 0;
-        END_IF
-    END_IF
-
-    // Background polling: display register or ABS/REL pair
-    IF UseDisplayRegister3B THEN
-        mbFunc := 3;
-        mbAddr := 16#003B;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 3;
-        mbReqHold := TRUE;
-    ELSIF step = 0 THEN
-        mbFunc := 3;
-        mbAddr := 16#0022;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 1;
-        mbReqHold := TRUE;
-    ELSE
-        mbFunc := 3;
-        mbAddr := 16#0024;
-        mbQty := 2;
-        mbWbc := 0;
-        op := 2;
-        mbReqHold := TRUE;
-    END_IF
+    LastErrorId := 0;
+    LastDiscardId := 0;
 END_IF
 ]]></ST>
     </Implementation>
     <LineIds Name="FB_PD33">
-      <LineId Id="1" Count="220" />
+      <LineId Id="1" Count="140" />
     </LineIds>
   </POU>
 </TcPlcObject>

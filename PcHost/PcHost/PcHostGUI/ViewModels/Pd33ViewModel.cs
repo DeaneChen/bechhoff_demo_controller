@@ -20,7 +20,7 @@ namespace PcHostGUI.ViewModels
         private int _channel = 1;
         private int _slaveId = 1;
         private bool _wordSwap32 = true;
-        private bool _useDisplayRegister3B = true;
+        private bool _useDisplayRegister3B;
 
         private bool _channelConflict;
         private bool _busy;

@@ -6,12 +6,9 @@
       PD33 series laser displacement sensor (Modbus RTU over EL6022 / RS-485).
 
       Registers (from manual screenshots):
-      - Absolute distance (read): 0x0022, Qty=2 (32-bit, low word first), scale 0.1um => mm = raw / 10000
-      - Relative distance (read): 0x0024, Qty=2 (32-bit signed, low word first), scale 1um => mm = raw / 1000
-      - Display distance (read): 0x003B, Qty=2 (32-bit signed, low word first), scale 0.001mm => mm = raw / 1000
-      - Zero set/cancel (write): 0x0020, 0x06 write single register
-        - Set zero: read current relative distance, write its low word to 0x0020
-        - Cancel zero: write 0x0000 to 0x0020
+      Current mode: passive parsing of PD33 full-speed active output.
+      Expected frame: slave=1, function=3, bytecount=4, payload i32 low-word-first, CRC16.
+      Scale: raw / 1000.0 = mm.
     *)
 
     Enable : BOOL;
@@ -21,11 +18,11 @@
     // PD33 frames shown in the manual interpret 32-bit values as "low word first".
     // Keep this TRUE unless you verify your device uses the opposite order.
     WordSwap32 : BOOL := TRUE;
-    UseDisplayRegister3B : BOOL := TRUE; // TRUE: poll 0x003B display distance (0.001mm); FALSE: poll 0x0022/0x0024
+    UseDisplayRegister3B : BOOL := FALSE; // reserved; passive full-speed output parser does not send read requests
 
     // Command handshake (PC writes Cmd+CmdSeq; PLC sets CmdAckSeq after completion)
     CmdSeq : UDINT;
-    Cmd : USINT; // 0=None, 1=Zero, 2=CancelZero
+    Cmd : USINT; // reserved in passive mode
     CmdAckSeq : UDINT;
     Busy : BOOL;
 

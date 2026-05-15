@@ -34,7 +34,7 @@
                             <TextBlock Text="SlaveId" VerticalAlignment="Center" Margin="0,0,8,10" />
                             <TextBox Width="60" Text="{Binding SlaveIdInt, UpdateSourceTrigger=PropertyChanged}" VerticalContentAlignment="Center" Margin="0,0,18,10" />
                             <CheckBox Content="Low word first (WordSwap32)" IsChecked="{Binding WordSwap32}" Margin="0,0,18,10" />
-                            <CheckBox Content="Read display register 0x003B" IsChecked="{Binding UseDisplayRegister3B}" Margin="0,0,18,10" />
+                            <CheckBox Content="Reserved: active read 0x003B disabled in passive mode" IsChecked="{Binding UseDisplayRegister3B}" Margin="0,0,18,10" />
                         </WrapPanel>
 
                         <WrapPanel>

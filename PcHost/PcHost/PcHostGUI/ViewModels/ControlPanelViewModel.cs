@@ -279,7 +279,7 @@ namespace PcHostGUI.ViewModels
                 if (UsePd33)
                 {
                     await _plc.WriteAsync("GVL_PD33.Channel", (byte)1, ct).ConfigureAwait(false);
-                    await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", true, ct).ConfigureAwait(false);
+                    await _plc.WriteAsync("GVL_PD33.UseDisplayRegister3B", false, ct).ConfigureAwait(false);
                     await _plc.WriteAsync("GVL_PD33.Enable", true, ct).ConfigureAwait(false);
                     _pd33StartedByPanel = true;
                 }
@@ -400,7 +400,7 @@ namespace PcHostGUI.ViewModels
             using (var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read))
             using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
             {
-                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_raw,pd33_mm,vibration_status,valves_bits,flags,selected_devices");
+                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_rel_raw,pd33_rel_mm,vibration_status,valves_bits,flags,selected_devices");
                 writer.Flush();
 
                 while (!ct.IsCancellationRequested)
@@ -429,8 +429,8 @@ namespace PcHostGUI.ViewModels
                                         rec.TimeUs.ToString(CultureInfo.InvariantCulture) + "," +
                                         Field(includePressure, rec.PressureRaw.ToString(CultureInfo.InvariantCulture)) + "," +
                                         Field(includeTorque, rec.TorqueRaw.ToString(CultureInfo.InvariantCulture)) + "," +
-                                        Field(includePd33, rec.Pd33AbsRaw.ToString(CultureInfo.InvariantCulture)) + "," +
-                                        Field(includePd33, (rec.Pd33AbsRaw / 1000.0).ToString("F6", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includePd33, rec.Pd33RelRaw.ToString(CultureInfo.InvariantCulture)) + "," +
+                                        Field(includePd33, (rec.Pd33RelRaw / 1000.0).ToString("F6", CultureInfo.InvariantCulture)) + "," +
                                         Field(includeVibration, "not_implemented") + "," +
                                         Field(includeValves, rec.ValvesBits.ToString(CultureInfo.InvariantCulture)) + "," +
                                         rec.Flags.ToString(CultureInfo.InvariantCulture) + "," +
