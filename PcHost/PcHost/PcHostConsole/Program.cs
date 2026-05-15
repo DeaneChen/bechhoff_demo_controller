@@ -1251,6 +1251,75 @@ namespace PcHostConsole
                     }
                 }
 
+                if (string.Equals(command, "vibration-dump", StringComparison.OrdinalIgnoreCase))
+                {
+                    using (var plc = new AdsPlcClient())
+                    {
+                        plc.Connect(settings);
+
+                        bool enable = plc.ReadSymbol<bool>("GVL_Vibration.Enable");
+                        byte channel = plc.ReadSymbol<byte>("GVL_Vibration.Channel");
+                        byte slaveId = plc.ReadSymbol<byte>("GVL_Vibration.SlaveId");
+                        ushort minGapMs = plc.ReadSymbol<ushort>("GVL_Vibration.MinGapMs");
+                        ushort timeoutMs = plc.ReadSymbol<ushort>("GVL_Vibration.TimeoutMs");
+
+                        bool busy = plc.ReadSymbol<bool>("GVL_Vibration.Busy");
+                        bool portReady = plc.ReadSymbol<bool>("GVL_Vibration.PortReady");
+                        bool commOk = plc.ReadSymbol<bool>("GVL_Vibration.CommOk");
+                        uint commErrorCount = plc.ReadSymbol<uint>("GVL_Vibration.CommErrorCount");
+                        uint lastErrorId = plc.ReadSymbol<uint>("GVL_Vibration.LastErrorId");
+                        byte exceptionCode = plc.ReadSymbol<byte>("GVL_Vibration.ExceptionCode");
+                        uint rxDiscardCount = plc.ReadSymbol<uint>("GVL_Vibration.RxDiscardCount");
+                        uint lastDiscardId = plc.ReadSymbol<uint>("GVL_Vibration.LastDiscardId");
+                        uint sampleSeq = plc.ReadSymbol<uint>("GVL_Vibration.SampleSeq");
+
+                        short accXRaw = plc.ReadSymbol<short>("GVL_Vibration.AccXRaw");
+                        short accYRaw = plc.ReadSymbol<short>("GVL_Vibration.AccYRaw");
+                        short accZRaw = plc.ReadSymbol<short>("GVL_Vibration.AccZRaw");
+                        short velXRaw = plc.ReadSymbol<short>("GVL_Vibration.VelXRaw");
+                        short velYRaw = plc.ReadSymbol<short>("GVL_Vibration.VelYRaw");
+                        short velZRaw = plc.ReadSymbol<short>("GVL_Vibration.VelZRaw");
+                        short tempRaw = plc.ReadSymbol<short>("GVL_Vibration.TempRaw");
+                        short dispXRaw = plc.ReadSymbol<short>("GVL_Vibration.DispXRaw");
+                        short dispYRaw = plc.ReadSymbol<short>("GVL_Vibration.DispYRaw");
+                        short dispZRaw = plc.ReadSymbol<short>("GVL_Vibration.DispZRaw");
+                        short freqXRaw = plc.ReadSymbol<short>("GVL_Vibration.FreqXRaw");
+                        short freqYRaw = plc.ReadSymbol<short>("GVL_Vibration.FreqYRaw");
+                        short freqZRaw = plc.ReadSymbol<short>("GVL_Vibration.FreqZRaw");
+
+                        byte lastTxLen = plc.ReadSymbol<byte>("GVL_Vibration.LastTxLen");
+                        byte[] lastTx = plc.ReadBytes("GVL_Vibration.LastTx", 22);
+                        byte lastRxLen = plc.ReadSymbol<byte>("GVL_Vibration.LastRxLen");
+                        byte[] lastRx = plc.ReadBytes("GVL_Vibration.LastRx", 22);
+
+                        Console.WriteLine("Enable:         " + enable);
+                        Console.WriteLine("Channel:        " + channel.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("SlaveId:        0x" + slaveId.ToString("X2", CultureInfo.InvariantCulture));
+                        Console.WriteLine("MinGapMs:       " + minGapMs.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("TimeoutMs:      " + timeoutMs.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("Busy:           " + busy);
+                        Console.WriteLine("PortReady:      " + portReady);
+                        Console.WriteLine("CommOk:         " + commOk);
+                        Console.WriteLine("CommErrorCount: " + commErrorCount.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastErrorId:    " + lastErrorId.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("ExceptionCode:  " + exceptionCode.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("RxDiscardCount: " + rxDiscardCount.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastDiscardId:  " + lastDiscardId.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("SampleSeq:      " + sampleSeq.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("AccRaw:         " + accXRaw + ", " + accYRaw + ", " + accZRaw);
+                        Console.WriteLine("VelRaw:         " + velXRaw + ", " + velYRaw + ", " + velZRaw);
+                        Console.WriteLine("TempRaw:        " + tempRaw + " (" + (tempRaw / 100.0).ToString("F2", CultureInfo.InvariantCulture) + " C)");
+                        Console.WriteLine("DispRaw:        " + dispXRaw + ", " + dispYRaw + ", " + dispZRaw);
+                        Console.WriteLine("FreqRaw:        " + freqXRaw + ", " + freqYRaw + ", " + freqZRaw);
+                        Console.WriteLine("LastTxLen:      " + lastTxLen.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastTx:         " + ToHex(lastTx, lastTxLen));
+                        Console.WriteLine("LastRxLen:      " + lastRxLen.ToString(CultureInfo.InvariantCulture));
+                        Console.WriteLine("LastRx:         " + ToHex(lastRx, lastRxLen));
+
+                        return 0;
+                    }
+                }
+
                 Console.Error.WriteLine("Unknown command: " + command);
                 PrintHelp();
                 return 2;
@@ -1317,6 +1386,7 @@ namespace PcHostConsole
             Console.WriteLine("  el6022-loopback --tx-ch 1|2 --hex \"01 02 03\" [--len N] [--timeout-ms 2000]");
             Console.WriteLine("  el6022-dump");
             Console.WriteLine("  pd33-dump");
+            Console.WriteLine("  vibration-dump");
             Console.WriteLine();
             Console.WriteLine("Notes:");
             Console.WriteLine("  For 500~2000Hz logging, prefer PLC ring-buffer + PC batch/poll read (ring-dump) over per-sample reads.");

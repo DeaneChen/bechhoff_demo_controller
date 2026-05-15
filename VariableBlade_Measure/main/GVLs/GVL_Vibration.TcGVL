@@ -18,8 +18,8 @@
     Enable : BOOL := FALSE;
     Channel : USINT := 2;
     SlaveId : USINT := 16#50;
-    MinGapMs : UINT := 200;
-    TimeoutMs : UINT := 500;
+    MinGapMs : UINT := 50;
+    TimeoutMs : UINT := 150;
 
     Busy : BOOL;
     PortReady : BOOL;

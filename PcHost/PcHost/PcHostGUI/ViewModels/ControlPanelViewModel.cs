@@ -286,8 +286,8 @@ namespace PcHostGUI.ViewModels
 
                 await _plc.WriteAsync("GVL_Vibration.Channel", (byte)2, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_Vibration.SlaveId", (byte)0x50, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_Vibration.MinGapMs", (ushort)200, ct).ConfigureAwait(false);
-                await _plc.WriteAsync("GVL_Vibration.TimeoutMs", (ushort)500, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.MinGapMs", (ushort)50, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.TimeoutMs", (ushort)150, ct).ConfigureAwait(false);
                 await _plc.WriteAsync("GVL_Vibration.Enable", UseVibration, ct).ConfigureAwait(false);
 
                 await _plc.WriteAsync("GVL_DataLogger.Enable", true, ct).ConfigureAwait(false);
