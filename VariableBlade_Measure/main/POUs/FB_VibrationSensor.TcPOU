@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <POU Name="FB_VibrationSensor" Id="{c7fbad50-40f5-4022-a0e7-e03c9c60aa36}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_VibrationSensor
+VAR_INPUT
+    Enable : BOOL;
+    Channel : USINT;
+    SlaveId : USINT;
+    MinGapMs : UINT;
+    TimeoutMs : UINT;
+END_VAR
+VAR_OUTPUT
+    Busy : BOOL;
+    PortReady : BOOL;
+    CommOk : BOOL;
+    CommErrorCount : UDINT;
+    LastErrorId : UDINT;
+    ExceptionCode : USINT;
+    RxDiscardCount : UDINT;
+    LastDiscardId : UDINT;
+    SampleSeq : UDINT;
+
+    AccXRaw : INT;
+    AccYRaw : INT;
+    AccZRaw : INT;
+    VelXRaw : INT;
+    VelYRaw : INT;
+    VelZRaw : INT;
+    TempRaw : INT;
+    DispXRaw : INT;
+    DispYRaw : INT;
+    DispZRaw : INT;
+    FreqXRaw : INT;
+    FreqYRaw : INT;
+    FreqZRaw : INT;
+
+    AccX : LREAL;
+    AccY : LREAL;
+    AccZ : LREAL;
+    VelX : LREAL;
+    VelY : LREAL;
+    VelZ : LREAL;
+    TempC : LREAL;
+    DispX : LREAL;
+    DispY : LREAL;
+    DispZ : LREAL;
+    FreqX : LREAL;
+    FreqY : LREAL;
+    FreqZ : LREAL;
+
+    LastTxLen : USINT;
+    LastTx : ARRAY [0..21] OF USINT;
+    LastRxLen : USINT;
+    LastRx : ARRAY [0..21] OF USINT;
+END_VAR
+VAR
+    mb : FB_ModbusRtuMaster;
+    mbReqHold : BOOL;
+    mbFunc : USINT;
+    mbAddr : UINT;
+    mbQty : USINT;
+    mbWbc : USINT;
+    mbWData : ARRAY [0..21] OF USINT;
+    op : USINT;
+    pollStep : USINT;
+    minGapTime : TIME;
+    timeoutTime : TIME;
+    tmpI : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF NOT Enable THEN
+    mbReqHold := FALSE;
+    mbFunc := 0;
+    mbAddr := 0;
+    mbQty := 0;
+    mbWbc := 0;
+    op := 0;
+    pollStep := 0;
+
+    Busy := FALSE;
+    PortReady := FALSE;
+    CommOk := FALSE;
+    LastErrorId := 0;
+    ExceptionCode := 0;
+    LastTxLen := 0;
+    LastRxLen := 0;
+    RETURN;
+END_IF
+
+IF MinGapMs = 0 THEN
+    minGapTime := T#200ms;
+ELSE
+    minGapTime := UINT_TO_TIME(MinGapMs);
+END_IF
+
+IF TimeoutMs = 0 THEN
+    timeoutTime := T#500ms;
+ELSE
+    timeoutTime := UINT_TO_TIME(TimeoutMs);
+END_IF
+
+mb(Enable := Enable,
+   Channel := Channel,
+   SlaveId := SlaveId,
+   Req := mbReqHold,
+   Func := mbFunc,
+   Addr := mbAddr,
+   Quantity := mbQty,
+   WriteByteCount := mbWbc,
+   WriteData := mbWData,
+   Timeout := timeoutTime,
+   MinGap := minGapTime);
+
+PortReady := mb.PortReady;
+Busy := mb.Busy;
+ExceptionCode := mb.ExceptionCode;
+RxDiscardCount := mb.RxDiscardCount;
+LastDiscardId := mb.LastDiscardId;
+
+IF mb.Busy THEN
+    mbReqHold := FALSE;
+END_IF
+
+IF mb.TxLen > 0 THEN
+    LastTxLen := mb.TxLen;
+    LastTx := mb.TxFrame;
+END_IF
+
+IF mb.RxLen > 0 THEN
+    LastRxLen := mb.RxLen;
+    LastRx := mb.RxFrame;
+END_IF
+
+IF mb.Error THEN
+    CommOk := FALSE;
+    CommErrorCount := CommErrorCount + 1;
+    LastErrorId := mb.ErrorId;
+    op := 0;
+    pollStep := 0;
+END_IF
+
+IF mb.Done THEN
+    CommOk := TRUE;
+    LastErrorId := 0;
+
+    CASE op OF
+    1: // 0x34..0x36 acceleration raw
+        AccXRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[0]));
+        AccYRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[1]));
+        AccZRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[2]));
+        AccX := INT_TO_LREAL(AccXRaw) / 32768.0 * 16.0;
+        AccY := INT_TO_LREAL(AccYRaw) / 32768.0 * 16.0;
+        AccZ := INT_TO_LREAL(AccZRaw) / 32768.0 * 16.0;
+
+    2: // 0x3A..0x3C velocity raw
+        VelXRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[0]));
+        VelYRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[1]));
+        VelZRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[2]));
+        VelX := INT_TO_LREAL(VelXRaw) / 100.0;
+        VelY := INT_TO_LREAL(VelYRaw) / 100.0;
+        VelZ := INT_TO_LREAL(VelZRaw) / 100.0;
+
+    3: // 0x40..0x46 temp/displacement/frequency raw
+        TempRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[0]));
+        DispXRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[1]));
+        DispYRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[2]));
+        DispZRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[3]));
+        FreqXRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[4]));
+        FreqYRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[5]));
+        FreqZRaw := WORD_TO_INT(UINT_TO_WORD(mb.ReadRegs[6]));
+        TempC := INT_TO_LREAL(TempRaw) / 100.0;
+        DispX := INT_TO_LREAL(DispXRaw);
+        DispY := INT_TO_LREAL(DispYRaw);
+        DispZ := INT_TO_LREAL(DispZRaw);
+        FreqX := INT_TO_LREAL(FreqXRaw) / 10.0;
+        FreqY := INT_TO_LREAL(FreqYRaw) / 10.0;
+        FreqZ := INT_TO_LREAL(FreqZRaw) / 10.0;
+        SampleSeq := SampleSeq + 1;
+
+    ELSE
+        ;
+    END_CASE
+
+    op := 0;
+    IF pollStep >= 3 THEN
+        pollStep := 1;
+    ELSE
+        pollStep := pollStep + 1;
+    END_IF
+END_IF
+
+IF (NOT mb.Busy) AND (op = 0) AND mb.PortReady AND (NOT mbReqHold) THEN
+    IF pollStep = 0 THEN
+        op := 1;
+    ELSIF pollStep = 1 THEN
+        op := 2;
+    ELSIF pollStep = 2 THEN
+        op := 3;
+    ELSE
+        op := 1;
+    END_IF
+
+    IF op = 1 THEN
+        mbAddr := 16#0034;
+        mbQty := 3;
+    ELSIF op = 2 THEN
+        mbAddr := 16#003A;
+        mbQty := 3;
+    ELSE
+        mbAddr := 16#0040;
+        mbQty := 7;
+    END_IF
+
+    mbFunc := 3;
+    mbWbc := 0;
+    mbReqHold := TRUE;
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_VibrationSensor">
+      <LineId Id="1" Count="180" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

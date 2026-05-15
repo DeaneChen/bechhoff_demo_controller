@@ -7,10 +7,11 @@ VAR
     initCh2Done : BOOL;
     fbNimServo : FB_NimServo;
     fbPd33 : FB_PD33;
+    fbVibration : FB_VibrationSensor;
 
     // DataLogger internal (packed ring buffer)
     logResetLatched : BOOL;
-    rec : ARRAY [0..27] OF USINT;
+    rec : ARRAY [0..53] OF USINT;
     base : UDINT;
     headMod : UDINT;
     seqLocal : UDINT;
@@ -158,6 +159,53 @@ GVL_PD33.LastTx := fbPd33.LastTx;
 GVL_PD33.LastRxLen := fbPd33.LastRxLen;
 GVL_PD33.LastRx := fbPd33.LastRx;
 
+// --- VB02 vibration sensor (Modbus RTU over EL6022 Ch2 / RS-485) ---
+fbVibration(
+    Enable := GVL_Vibration.Enable,
+    Channel := GVL_Vibration.Channel,
+    SlaveId := GVL_Vibration.SlaveId,
+    MinGapMs := GVL_Vibration.MinGapMs,
+    TimeoutMs := GVL_Vibration.TimeoutMs
+);
+GVL_Vibration.Busy := fbVibration.Busy;
+GVL_Vibration.PortReady := fbVibration.PortReady;
+GVL_Vibration.CommOk := fbVibration.CommOk;
+GVL_Vibration.CommErrorCount := fbVibration.CommErrorCount;
+GVL_Vibration.LastErrorId := fbVibration.LastErrorId;
+GVL_Vibration.ExceptionCode := fbVibration.ExceptionCode;
+GVL_Vibration.RxDiscardCount := fbVibration.RxDiscardCount;
+GVL_Vibration.LastDiscardId := fbVibration.LastDiscardId;
+GVL_Vibration.SampleSeq := fbVibration.SampleSeq;
+GVL_Vibration.AccXRaw := fbVibration.AccXRaw;
+GVL_Vibration.AccYRaw := fbVibration.AccYRaw;
+GVL_Vibration.AccZRaw := fbVibration.AccZRaw;
+GVL_Vibration.VelXRaw := fbVibration.VelXRaw;
+GVL_Vibration.VelYRaw := fbVibration.VelYRaw;
+GVL_Vibration.VelZRaw := fbVibration.VelZRaw;
+GVL_Vibration.TempRaw := fbVibration.TempRaw;
+GVL_Vibration.DispXRaw := fbVibration.DispXRaw;
+GVL_Vibration.DispYRaw := fbVibration.DispYRaw;
+GVL_Vibration.DispZRaw := fbVibration.DispZRaw;
+GVL_Vibration.FreqXRaw := fbVibration.FreqXRaw;
+GVL_Vibration.FreqYRaw := fbVibration.FreqYRaw;
+GVL_Vibration.FreqZRaw := fbVibration.FreqZRaw;
+GVL_Vibration.AccX := fbVibration.AccX;
+GVL_Vibration.AccY := fbVibration.AccY;
+GVL_Vibration.AccZ := fbVibration.AccZ;
+GVL_Vibration.VelX := fbVibration.VelX;
+GVL_Vibration.VelY := fbVibration.VelY;
+GVL_Vibration.VelZ := fbVibration.VelZ;
+GVL_Vibration.TempC := fbVibration.TempC;
+GVL_Vibration.DispX := fbVibration.DispX;
+GVL_Vibration.DispY := fbVibration.DispY;
+GVL_Vibration.DispZ := fbVibration.DispZ;
+GVL_Vibration.FreqX := fbVibration.FreqX;
+GVL_Vibration.FreqY := fbVibration.FreqY;
+GVL_Vibration.FreqZ := fbVibration.FreqZ;
+GVL_Vibration.LastTxLen := fbVibration.LastTxLen;
+GVL_Vibration.LastTx := fbVibration.LastTx;
+GVL_Vibration.LastRxLen := fbVibration.LastRxLen;
+GVL_Vibration.LastRx := fbVibration.LastRx;
 // --- DataLogger ring buffer (packed bytes) ---
 // Time base: PlcTask cycle is 2000us (see PlcTask.TcTTO). Use cycle counter for monotonic time.
 tUs := ULINT_TO_UDINT(GVL_PcDemo.MainCycleCounter) * 2000;
@@ -225,21 +273,87 @@ IF GVL_DataLogger.Enable THEN
         rec[22] := UDINT_TO_USINT(SHR(tmpU32, 16) AND 16#FF);
         rec[23] := UDINT_TO_USINT(SHR(tmpU32, 24) AND 16#FF);
 
+        // vibration raw values (i16)
+        tmpI16 := GVL_Vibration.AccXRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[24] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[25] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.AccYRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[26] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[27] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.AccZRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[28] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[29] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.VelXRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[30] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[31] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.VelYRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[32] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[33] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.VelZRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[34] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[35] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.TempRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[36] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[37] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.DispXRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[38] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[39] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.DispYRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[40] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[41] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.DispZRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[42] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[43] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.FreqXRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[44] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[45] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.FreqYRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[46] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[47] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
+
+        tmpI16 := GVL_Vibration.FreqZRaw;
+        tmpU32 := INT_TO_UDINT(tmpI16) AND 16#FFFF;
+        rec[48] := UDINT_TO_USINT(tmpU32 AND 16#FF);
+        rec[49] := UDINT_TO_USINT(SHR(tmpU32, 8) AND 16#FF);
         // valves bits
         valvesBits := 0;
         IF GVL_ValveIO.Valve1_Fb THEN valvesBits := valvesBits OR 16#01; END_IF
         IF GVL_ValveIO.Valve2_Fb THEN valvesBits := valvesBits OR 16#02; END_IF
         IF GVL_ValveIO.Valve3_Fb THEN valvesBits := valvesBits OR 16#04; END_IF
         IF GVL_ValveIO.Valve4_Fb THEN valvesBits := valvesBits OR 16#08; END_IF
-        rec[24] := valvesBits;
+        rec[50] := valvesBits;
 
         // flags
-        rec[25] := 0;
-        IF GVL_PD33.CommOk THEN rec[25] := rec[25] OR 16#01; END_IF
+        rec[51] := 0;
+        IF GVL_PD33.CommOk THEN rec[51] := rec[51] OR 16#01; END_IF
+        IF GVL_Vibration.CommOk THEN rec[51] := rec[51] OR 16#02; END_IF
 
         // reserved u16
-        rec[26] := 0;
-        rec[27] := 0;
+        rec[52] := 0;
+        rec[53] := 0;
 
         // write record into ring (buffer size is multiple of record size)
         headMod := GVL_DataLogger.Head MOD GVL_DataLogger.BufferSize;
@@ -272,13 +386,39 @@ IF GVL_DataLogger.Enable THEN
         GVL_DataLogger.Buffer[base + 25] := rec[25];
         GVL_DataLogger.Buffer[base + 26] := rec[26];
         GVL_DataLogger.Buffer[base + 27] := rec[27];
+        GVL_DataLogger.Buffer[base + 28] := rec[28];
+        GVL_DataLogger.Buffer[base + 29] := rec[29];
+        GVL_DataLogger.Buffer[base + 30] := rec[30];
+        GVL_DataLogger.Buffer[base + 31] := rec[31];
+        GVL_DataLogger.Buffer[base + 32] := rec[32];
+        GVL_DataLogger.Buffer[base + 33] := rec[33];
+        GVL_DataLogger.Buffer[base + 34] := rec[34];
+        GVL_DataLogger.Buffer[base + 35] := rec[35];
+        GVL_DataLogger.Buffer[base + 36] := rec[36];
+        GVL_DataLogger.Buffer[base + 37] := rec[37];
+        GVL_DataLogger.Buffer[base + 38] := rec[38];
+        GVL_DataLogger.Buffer[base + 39] := rec[39];
+        GVL_DataLogger.Buffer[base + 40] := rec[40];
+        GVL_DataLogger.Buffer[base + 41] := rec[41];
+        GVL_DataLogger.Buffer[base + 42] := rec[42];
+        GVL_DataLogger.Buffer[base + 43] := rec[43];
+        GVL_DataLogger.Buffer[base + 44] := rec[44];
+        GVL_DataLogger.Buffer[base + 45] := rec[45];
+        GVL_DataLogger.Buffer[base + 46] := rec[46];
+        GVL_DataLogger.Buffer[base + 47] := rec[47];
+        GVL_DataLogger.Buffer[base + 48] := rec[48];
+        GVL_DataLogger.Buffer[base + 49] := rec[49];
+        GVL_DataLogger.Buffer[base + 50] := rec[50];
+        GVL_DataLogger.Buffer[base + 51] := rec[51];
+        GVL_DataLogger.Buffer[base + 52] := rec[52];
+        GVL_DataLogger.Buffer[base + 53] := rec[53];
 
         GVL_DataLogger.Head := GVL_DataLogger.Head + GVL_DataLogger.RecordSize;
         GVL_DataLogger.Seq := GVL_DataLogger.Seq + 1;
     END_IF
 END_IF
 
-IF (NOT GVL_NimServo.Enable) AND GVL_Rs485Demo.Enable THEN
+IF (NOT GVL_NimServo.Enable) AND (NOT GVL_PD33.Enable) AND (NOT GVL_Vibration.Enable) AND GVL_Rs485Demo.Enable THEN
 // --- EL6022 RS-485 demo loopback (Ch1 <-> Ch2) ---
 // One-time init handshake (Ctrl bit2 / Status bit2)
 IF NOT initCh1Done THEN
@@ -318,13 +458,13 @@ IF GVL_Rs485Demo.TxBusy THEN
     IF GVL_Rs485Demo.TxUseCh2 THEN
         IF (GVL_EL6022_IO.EL6022_Ch2_Status AND 16#0001) <> 0 THEN
             // Clear TxReq bit after accepted
-            GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#FFFE;
+            GVL_EL6022_IO.EL6022_Ch2_Ctrl := GVL_EL6022_IO.EL6022_Ch2_Ctrl AND 16#00FE;
             GVL_Rs485Demo.TxDoneSeq := GVL_Rs485Demo.TxSeq;
             GVL_Rs485Demo.TxBusy := FALSE;
         END_IF
     ELSE
         IF (GVL_EL6022_IO.EL6022_Ch1_Status AND 16#0001) <> 0 THEN
-            GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#FFFE;
+            GVL_EL6022_IO.EL6022_Ch1_Ctrl := GVL_EL6022_IO.EL6022_Ch1_Ctrl AND 16#00FE;
             GVL_Rs485Demo.TxDoneSeq := GVL_Rs485Demo.TxSeq;
             GVL_Rs485Demo.TxBusy := FALSE;
         END_IF

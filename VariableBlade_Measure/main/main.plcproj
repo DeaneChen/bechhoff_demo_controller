@@ -39,6 +39,9 @@
     <Compile Include="GVLs\GVL_PD33.TcGVL">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="GVLs\GVL_Vibration.TcGVL">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="GVLs\GVL_ValveIO.TcGVL">
       <SubType>Code</SubType>
     </Compile>
@@ -61,6 +64,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="POUs\FB_PD33.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="POUs\FB_VibrationSensor.TcPOU">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

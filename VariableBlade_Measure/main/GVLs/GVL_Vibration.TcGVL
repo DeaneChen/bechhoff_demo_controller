@@ -1,0 +1,69 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.13">
+  <GVL Name="GVL_Vibration" Id="{9877b69e-3eb8-4c6e-a97d-d2a59e350343}">
+    <Declaration><![CDATA[VAR_GLOBAL
+    (*
+      VB02/WTVB02-485 vibration sensor over EL6022 Channel 2.
+
+      SDK register map:
+        0x34..0x36 vibration acceleration X/Y/Z, raw INT, scale raw / 32768 * 16
+        0x3A..0x3C vibration velocity X/Y/Z, raw INT, scale raw / 100
+        0x40      temperature, raw INT, scale raw / 100
+        0x41..0x43 displacement X/Y/Z, raw INT
+        0x44..0x46 frequency X/Y/Z, raw INT, scale raw / 10
+
+      EL6022 frame limit is 22 bytes, so PLC reads these as 3 Modbus transactions.
+    *)
+
+    Enable : BOOL := FALSE;
+    Channel : USINT := 2;
+    SlaveId : USINT := 16#50;
+    MinGapMs : UINT := 200;
+    TimeoutMs : UINT := 500;
+
+    Busy : BOOL;
+    PortReady : BOOL;
+    CommOk : BOOL;
+    CommErrorCount : UDINT;
+    LastErrorId : UDINT;
+    ExceptionCode : USINT;
+    RxDiscardCount : UDINT;
+    LastDiscardId : UDINT;
+    SampleSeq : UDINT;
+
+    AccXRaw : INT;
+    AccYRaw : INT;
+    AccZRaw : INT;
+    VelXRaw : INT;
+    VelYRaw : INT;
+    VelZRaw : INT;
+    TempRaw : INT;
+    DispXRaw : INT;
+    DispYRaw : INT;
+    DispZRaw : INT;
+    FreqXRaw : INT;
+    FreqYRaw : INT;
+    FreqZRaw : INT;
+
+    AccX : LREAL;
+    AccY : LREAL;
+    AccZ : LREAL;
+    VelX : LREAL;
+    VelY : LREAL;
+    VelZ : LREAL;
+    TempC : LREAL;
+    DispX : LREAL;
+    DispY : LREAL;
+    DispZ : LREAL;
+    FreqX : LREAL;
+    FreqY : LREAL;
+    FreqZ : LREAL;
+
+    LastTxLen : USINT;
+    LastTx : ARRAY [0..21] OF USINT;
+    LastRxLen : USINT;
+    LastRx : ARRAY [0..21] OF USINT;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>

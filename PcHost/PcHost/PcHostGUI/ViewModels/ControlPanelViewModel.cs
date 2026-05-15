@@ -284,10 +284,11 @@ namespace PcHostGUI.ViewModels
                     _pd33StartedByPanel = true;
                 }
 
-                if (UseVibration)
-                {
-                    _log("WARN", "Vibration sensor recording is reserved; PLC vibration driver is not implemented yet.");
-                }
+                await _plc.WriteAsync("GVL_Vibration.Channel", (byte)2, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.SlaveId", (byte)0x50, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.MinGapMs", (ushort)200, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.TimeoutMs", (ushort)500, ct).ConfigureAwait(false);
+                await _plc.WriteAsync("GVL_Vibration.Enable", UseVibration, ct).ConfigureAwait(false);
 
                 await _plc.WriteAsync("GVL_DataLogger.Enable", true, ct).ConfigureAwait(false);
                 _loggerStartedByPanel = true;
@@ -338,6 +339,7 @@ namespace PcHostGUI.ViewModels
             {
                 try { await _plc.WriteAsync("GVL_PD33.Enable", false, ct).ConfigureAwait(false); } catch { }
             }
+            try { await _plc.WriteAsync("GVL_Vibration.Enable", false, ct).ConfigureAwait(false); } catch { }
             _pd33StartedByPanel = false;
             _loggerStartedByPanel = false;
 
@@ -373,6 +375,7 @@ namespace PcHostGUI.ViewModels
             {
                 try { await _plc.WriteAsync("GVL_PD33.Enable", false, ct).ConfigureAwait(false); } catch { }
             }
+            try { await _plc.WriteAsync("GVL_Vibration.Enable", false, ct).ConfigureAwait(false); } catch { }
             _pd33StartedByPanel = false;
             _loggerStartedByPanel = false;
         }
@@ -382,7 +385,7 @@ namespace PcHostGUI.ViewModels
             const string headSymbol = "GVL_DataLogger.Head";
             const string tailSymbol = "GVL_DataLogger.Tail";
             const string bufferSymbol = "GVL_DataLogger.Buffer";
-            const int bufferSize = 28 * 4096;
+            const int bufferSize = VariableBladeLogRecord.SizeBytes * 4096;
 
             byte[] carry = Array.Empty<byte>();
             var cursor = new RingBufferCursor(0);
@@ -400,7 +403,7 @@ namespace PcHostGUI.ViewModels
             using (var fs = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.Read))
             using (var writer = new StreamWriter(fs, new UTF8Encoding(false)))
             {
-                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_rel_raw,pd33_rel_mm,vibration_status,valves_bits,flags,selected_devices");
+                writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_rel_raw,pd33_rel_mm,vib_acc_x,vib_acc_y,vib_acc_z,vib_vel_x,vib_vel_y,vib_vel_z,vib_temp_c,vib_disp_x,vib_disp_y,vib_disp_z,vib_freq_x,vib_freq_y,vib_freq_z,valves_bits,flags,selected_devices");
                 writer.Flush();
 
                 while (!ct.IsCancellationRequested)
@@ -431,7 +434,19 @@ namespace PcHostGUI.ViewModels
                                         Field(includeTorque, rec.TorqueRaw.ToString(CultureInfo.InvariantCulture)) + "," +
                                         Field(includePd33, rec.Pd33RelRaw.ToString(CultureInfo.InvariantCulture)) + "," +
                                         Field(includePd33, (rec.Pd33RelRaw / 1000.0).ToString("F6", CultureInfo.InvariantCulture)) + "," +
-                                        Field(includeVibration, "not_implemented") + "," +
+                                        Field(includeVibration, rec.VibAccX.ToString("F6", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibAccY.ToString("F6", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibAccZ.ToString("F6", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibVelX.ToString("F2", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibVelY.ToString("F2", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibVelZ.ToString("F2", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibTempC.ToString("F2", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibDispX.ToString("F0", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibDispY.ToString("F0", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibDispZ.ToString("F0", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibFreqX.ToString("F1", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibFreqY.ToString("F1", CultureInfo.InvariantCulture)) + "," +
+                                        Field(includeVibration, rec.VibFreqZ.ToString("F1", CultureInfo.InvariantCulture)) + "," +
                                         Field(includeValves, rec.ValvesBits.ToString(CultureInfo.InvariantCulture)) + "," +
                                         rec.Flags.ToString(CultureInfo.InvariantCulture) + "," +
                                         BuildSelectionText(includePd33, includeVibration, includePressure, includeTorque, includeValves)

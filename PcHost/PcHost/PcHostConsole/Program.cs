@@ -588,7 +588,7 @@ namespace PcHostConsole
                     string headSymbol = "GVL_DataLogger.Head";
                     string tailSymbol = "GVL_DataLogger.Tail";
                     string bufferSymbol = "GVL_DataLogger.Buffer";
-                    int bufferSize = 28 * 4096;
+                    int bufferSize = VariableBladeLogRecord.SizeBytes * 4096;
 
                     Console.WriteLine("Connecting to " + amsNetId + ":" + port);
                     Console.WriteLine("Logging to: " + Path.GetFullPath(outCsv));
@@ -623,7 +623,7 @@ namespace PcHostConsole
                         plc.WriteSymbol("GVL_DataLogger.Enable", true);
 
                         // CSV header
-                        writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_abs_raw,pd33_rel_raw,valves_bits,flags");
+                        writer.WriteLine("pc_utc_iso,seq,t_us,pressure_raw,torque_raw,pd33_abs_raw,pd33_rel_raw,vib_acc_x,vib_acc_y,vib_acc_z,vib_vel_x,vib_vel_y,vib_vel_z,vib_temp_c,vib_disp_x,vib_disp_y,vib_disp_z,vib_freq_x,vib_freq_y,vib_freq_z,valves_bits,flags");
                         writer.Flush();
 
                         var cursor = new RingBufferCursor(0);
@@ -657,6 +657,19 @@ namespace PcHostConsole
                                             rec.TorqueRaw.ToString(CultureInfo.InvariantCulture) + "," +
                                             rec.Pd33AbsRaw.ToString(CultureInfo.InvariantCulture) + "," +
                                             rec.Pd33RelRaw.ToString(CultureInfo.InvariantCulture) + "," +
+                                            rec.VibAccX.ToString("F6", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibAccY.ToString("F6", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibAccZ.ToString("F6", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibVelX.ToString("F2", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibVelY.ToString("F2", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibVelZ.ToString("F2", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibTempC.ToString("F2", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibDispX.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibDispY.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibDispZ.ToString("F0", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibFreqX.ToString("F1", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibFreqY.ToString("F1", CultureInfo.InvariantCulture) + "," +
+                                            rec.VibFreqZ.ToString("F1", CultureInfo.InvariantCulture) + "," +
                                             rec.ValvesBits.ToString(CultureInfo.InvariantCulture) + "," +
                                             rec.Flags.ToString(CultureInfo.InvariantCulture)
                                         );

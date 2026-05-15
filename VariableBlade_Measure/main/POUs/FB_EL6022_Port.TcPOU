@@ -78,7 +78,7 @@ txStartPrev := TxStart;
 // TX accepted (Status bit0)
 IF TxBusy THEN
     IF (status AND 16#0001) <> 0 THEN
-        ctrl := ctrl AND 16#FFFE; // clear TxReq (bit0)
+        ctrl := ctrl AND 16#00FE; // clear TxReq and TX length after accepted
         TxBusy := FALSE;
         TxDone := TRUE;
     END_IF
@@ -119,4 +119,3 @@ LastCtrl := ctrl;
     </LineIds>
   </POU>
 </TcPlcObject>
-

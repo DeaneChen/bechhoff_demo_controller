@@ -37,7 +37,7 @@
                         <TextBlock Text="未勾选时不会启动对应外设。PD33 仅在开始记录且勾选时启用 485 Ch1 轮询。" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
                         <CheckBox Content="PD33 激光传感器（EL6022 Ch1，被动解析全速输出）" IsChecked="{Binding UsePd33}" Margin="0,4,0,4" />
-                        <CheckBox Content="振动传感器（EL6022 Ch2，暂未实现）" IsChecked="{Binding UseVibration}" Margin="0,4,0,4" />
+                        <CheckBox Content="振动传感器（EL6022 Ch2，VB02-485）" IsChecked="{Binding UseVibration}" Margin="0,4,0,4" />
                         <CheckBox Content="液压压力（EL3742 Sample 1）" IsChecked="{Binding UsePressure}" Margin="0,4,0,4" />
                         <CheckBox Content="扭矩（EL3742 Sample 2）" IsChecked="{Binding UseTorque}" Margin="0,4,0,4" />
                         <CheckBox Content="四路开关阀状态/控制（EL2034）" IsChecked="{Binding UseValves}" Margin="0,4,0,4" />
@@ -79,7 +79,7 @@
 
                     <StackPanel Grid.Column="4">
                         <TextBlock Text="CSV 记录" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock Text="记录 PLC 环形缓冲：压力 raw、扭矩 raw、PD33 相对距离 raw/mm、阀状态；振动列当前写 not_implemented。" Margin="0,6,0,8"
+                        <TextBlock Text="记录 PLC 环形缓冲：压力 raw、扭矩 raw、PD33 相对距离、振动加速度/速度/温度/位移/频率、阀状态。" Margin="0,6,0,8"
                                    Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding Status}" Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
 
